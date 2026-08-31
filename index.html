@@ -107,6 +107,12 @@
     margin: 8px 0 4px;
   }
 
+  .nom-adherent {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
   .sous-texte {
     font-size: 14px;
     color: #666;
@@ -130,6 +136,7 @@
   </div>
 
   <div class="resultat" id="resultat">
+    <div class="nom-adherent" id="nomAdherent"></div>
     <div class="annee">2027</div>
     <div class="sous-texte">Adhésion validée</div>
   </div>
@@ -144,6 +151,11 @@
   const champCode = document.getElementById('champCode');
   const formulaire = document.getElementById('formulaire');
   const resultat = document.getElementById('resultat');
+  const nomAdherent = document.getElementById('nomAdherent');
+
+  // Récupère l'identifiant de la personne depuis l'URL du QR code (?id=jean-dupont)
+  const parametres = new URLSearchParams(window.location.search);
+  const identifiant = parametres.get('id');
 
   champs.forEach((champ, index) => {
     champ.addEventListener('input', () => {
@@ -161,10 +173,27 @@
     });
   });
 
-  function verifierSiComplet() {
+  async function recupererNom(id) {
+    try {
+      const reponse = await fetch('adherents.json');
+      const annuaire = await reponse.json();
+      return annuaire[id] || null;
+    } catch (erreur) {
+      return null;
+    }
+  }
+
+  async function verifierSiComplet() {
     const code = Array.from(champs).map(c => c.value).join('');
     if (code.length === 4) {
       if (code === CODE_ATTENDU) {
+        // Affiche le nom/prénom si l'identifiant est reconnu
+        if (identifiant) {
+          const personne = await recupererNom(identifiant);
+          if (personne) {
+            nomAdherent.textContent = `${personne.prenom} ${personne.nom}`;
+          }
+        }
         formulaire.classList.add('masque');
         resultat.classList.add('visible');
       } else {
