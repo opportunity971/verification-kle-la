@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vérification adhérent</title>
+<style>
+  :root {
+    --encre: #111111;
+    --papier: #fafaf8;
+    --ligne: #d8d6d0;
+    --erreur: #b3261e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--papier);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--encre);
+    padding: 24px;
+  }
+
+  .carte {
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+  }
+
+  .logo {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0 0 28px;
+    color: #555;
+  }
+
+  .champ-code {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .champ-code input {
+    width: 46px;
+    height: 56px;
+    text-align: center;
+    font-size: 24px;
+    border: 1.5px solid var(--ligne);
+    border-radius: 8px;
+    background: white;
+    color: var(--encre);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .champ-code input:focus {
+    border-color: var(--encre);
+  }
+
+  .champ-code.erreur input {
+    border-color: var(--erreur);
+    animation: secouer 0.3s ease;
+  }
+
+  @keyframes secouer {
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .message-erreur {
+    font-size: 13px;
+    color: var(--erreur);
+    min-height: 18px;
+    margin-bottom: 8px;
+  }
+
+  .resultat {
+    display: none;
+  }
+
+  .resultat.visible {
+    display: block;
+  }
+
+  .formulaire.masque {
+    display: none;
+  }
+
+  .annee {
+    font-size: 64px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 8px 0 4px;
+  }
+
+  .sous-texte {
+    font-size: 14px;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+
+<div class="carte">
+  <img src="logo.png" alt="Logo" class="logo">
+
+  <div class="formulaire" id="formulaire">
+    <h1>Entrez le code adhérent</h1>
+    <div class="champ-code" id="champCode">
+      <input type="tel" inputmode="numeric" maxlength="1" autocomplete="off">
+      <input type="tel" inputmode="numeric" maxlength="1" autocomplete="off">
+      <input type="tel" inputmode="numeric" maxlength="1" autocomplete="off">
+      <input type="tel" inputmode="numeric" maxlength="1" autocomplete="off">
+    </div>
+    <div class="message-erreur" id="messageErreur"></div>
+  </div>
+
+  <div class="resultat" id="resultat">
+    <div class="annee">2027</div>
+    <div class="sous-texte">Adhésion validée</div>
+  </div>
+</div>
+
+<script>
+  // Code attendu (haché de façon simple — voir remarque de sécurité)
+  const CODE_ATTENDU = "1529";
+
+  const champs = document.querySelectorAll('#champCode input');
+  const messageErreur = document.getElementById('messageErreur');
+  const champCode = document.getElementById('champCode');
+  const formulaire = document.getElementById('formulaire');
+  const resultat = document.getElementById('resultat');
+
+  champs.forEach((champ, index) => {
+    champ.addEventListener('input', () => {
+      champ.value = champ.value.replace(/[^0-9]/g, '');
+      if (champ.value && index < champs.length - 1) {
+        champs[index + 1].focus();
+      }
+      verifierSiComplet();
+    });
+
+    champ.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !champ.value && index > 0) {
+        champs[index - 1].focus();
+      }
+    });
+  });
+
+  function verifierSiComplet() {
+    const code = Array.from(champs).map(c => c.value).join('');
+    if (code.length === 4) {
+      if (code === CODE_ATTENDU) {
+        formulaire.classList.add('masque');
+        resultat.classList.add('visible');
+      } else {
+        messageErreur.textContent = 'Code incorrect';
+        champCode.classList.add('erreur');
+        setTimeout(() => {
+          champCode.classList.remove('erreur');
+          champs.forEach(c => c.value = '');
+          champs[0].focus();
+          messageErreur.textContent = '';
+        }, 600);
+      }
+    }
+  }
+
+  champs[0].focus();
+</script>
+
+</body>
+</html>
