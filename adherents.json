@@ -38,5 +38,9 @@
   "alpha-lauranne": {
     "nom": "ALPHA",
     "prenom": "Lauranne"
+  },
+  "barry-test-louis": {
+    "nom": "BARRY TEST",
+    "prenom": "Louis"
   }
 }
