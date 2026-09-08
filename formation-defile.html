@@ -410,13 +410,13 @@ function refreshCell(r,c){
     return;
   }
 
-  const initials = data.blocked ? '🔒' : (data.name ? data.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '');
+  const initials = data.name ? data.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : (data.blocked ? '🔒' : '');
   const instrLabel = (data.instrument && !data.blocked) ? sectionAbbrev[data.instrument] : '';
   el.innerHTML = `
     <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="20" cy="27" rx="13" ry="9" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
       <circle cx="20" cy="14" r="9" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
-      ${data.name && !data.blocked ? '<circle class="taken-dot" cx="34" cy="7" r="4"></circle>' : ''}
+      ${data.name ? '<circle class="taken-dot" cx="34" cy="7" r="4"></circle>' : ''}
     </svg>
     ${initials ? `<span class="initials">${initials}</span>` : ''}
     ${instrLabel ? `<span class="instr-label">${instrLabel}</span>` : ''}
@@ -670,7 +670,7 @@ function renderDetail(r,c){
       showToast('Place mise à jour.');
     });
     document.getElementById('btn-toggle-block').addEventListener('click', async () => {
-      await setCellRemote(r, c, data.instrument, data.blocked ? data.name : '', !data.blocked, false);
+      await setCellRemote(r, c, data.instrument, data.name, !data.blocked, false);
       showToast(data.blocked ? 'Place débloquée.' : 'Place bloquée.');
       renderDetail(r,c);
     });
