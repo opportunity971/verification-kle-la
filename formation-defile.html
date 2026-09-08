@@ -725,15 +725,32 @@ function renderDetail(r,c){
     `;
     return;
   }
+  const isRowLocked = !!data.instrument;
+  const instrSelectHtml = isRowLocked ? '' : `
+    <label for="inp-reserve-instr">Ton instrument</label>
+    <select id="inp-reserve-instr">
+      <option value="">— Choisir —</option>
+      <option value="basse">Basse</option>
+      <option value="contrebasse">Contrebasse</option>
+      <option value="chan">Tambours chan</option>
+      <option value="konk">Konk</option>
+      <option value="chacha">Chacha</option>
+    </select>`;
   panel.innerHTML = `
     <p class="pos-title">Rangée ${r}, position ${c}</p>
     <p class="occupant-instr">${instrDisplay} — place libre</p>
+    ${instrSelectHtml}
     <p class="occupant-name">${currentUserName}</p>
     <button class="btn btn-save" id="btn-reserve">Réserver cette place</button>
   `;
   document.getElementById('btn-reserve').addEventListener('click', async () => {
+    let instrument = data.instrument;
+    if(!instrument){
+      instrument = document.getElementById('inp-reserve-instr').value;
+      if(!instrument){ showToast('Choisis ton instrument.'); return; }
+    }
     try {
-      const result = await apiPost({ action:'reserve', row:r, col:c, name: currentUserName });
+      const result = await apiPost({ action:'reserve', row:r, col:c, name: currentUserName, instrument });
       if(result.ok){
         await loadAllData();
         refreshAll();
