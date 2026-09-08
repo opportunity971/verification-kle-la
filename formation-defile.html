@@ -1,233 +1,946 @@
-// ============================================================
-// PASSERELLE GOOGLE SHEET <-> PAGE WEB "KLÉ LA MASS / MISISYEN"
-// ============================================================
-
-var ROWS = 40;
-var COLS = 5;
-
-// Change ce mot de passe si besoin (reste côté serveur, jamais visible du client)
-var ORGA_PASSWORD = 'orgakléla2026';
-
-function getSheet(name) {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
-}
-
-// Initialise la feuille "Grille" avec les 200 lignes si elle est vide.
-// Se lance automatiquement au premier appel, ne fait rien si déjà rempli.
-function ensureGridInitialized() {
-  var sheet = getSheet('Grille');
-  if (sheet.getLastRow() >= 1) return; // déjà initialisé
-
-  sheet.appendRow(['Rangee', 'Position', 'Instrument', 'Nom', 'Bloquee', 'Supprimee']);
-  var rows = [];
-  for (var r = 1; r <= ROWS; r++) {
-    for (var c = 1; c <= COLS; c++) {
-      rows.push([r, c, '', '', false, false]);
-    }
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Klé la mass</title>
+<style>
+  :root{
+    --nuit: #140F26;
+    --nuit-deep: #0C0918;
+    --panel: #1E1638;
+    --rouge: #E8352B;
+    --jaune: #FFC93C;
+    --vert: #1DBE79;
+    --bleu: #2196D8;
+    --violet: #8B4FD1;
+    --creme: #FFF6E5;
+    --slate: #9C8FC2;
+    --unset: #443A78;
+    --taken-dot: #FFC93C;
   }
-  sheet.getRange(2, 1, rows.length, 6).setValues(rows);
-}
+  * { box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-function readGrid() {
-  ensureGridInitialized();
-  var sheet = getSheet('Grille');
-  var data = sheet.getDataRange().getValues();
-  var grid = {};
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var key = row[0] + '-' + row[1];
-    grid[key] = {
-      instrument: row[2] || '',
-      name: row[3] || '',
-      blocked: row[4] === true,
-      removed: row[5] === true
-    };
+  body{
+    margin:0;
+    font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(232,53,43,0.10) 0, transparent 40%),
+      radial-gradient(circle at 85% 12%, rgba(33,150,216,0.12) 0, transparent 38%),
+      radial-gradient(circle at 70% 80%, rgba(29,190,121,0.10) 0, transparent 42%),
+      radial-gradient(circle at 20% 85%, rgba(255,201,60,0.08) 0, transparent 40%),
+      var(--nuit-deep);
+    color: var(--creme);
+    min-height: 100vh;
   }
-  return grid;
-}
+  h1, h2, .brand-font { font-family: 'Baloo 2', sans-serif; }
 
-function findRowIndexForCell(sheet, r, c) {
-  // Ligne 2 = (r-1)*COLS + c + 1 (ligne 1 = en-têtes), calcul direct car la grille est générée dans cet ordre
-  return (r - 1) * COLS + c + 1;
-}
+  .layout{ display:grid; grid-template-columns: 300px 1fr; min-height:100vh; }
+  @media (max-width: 820px){ .layout{ grid-template-columns: 1fr; } .sidebar{ order:2; } }
 
-function writeCell(r, c, instrument, name, blocked, removed) {
-  var sheet = getSheet('Grille');
-  ensureGridInitialized();
-  var rowIndex = findRowIndexForCell(sheet, r, c);
-  sheet.getRange(rowIndex, 3, 1, 4).setValues([[instrument, name, blocked, removed]]);
-}
-
-function readRoster() {
-  var sheet = getSheet('Roster');
-  var data = sheet.getDataRange().getValues();
-  var names = [];
-  for (var i = 0; i < data.length; i++) {
-    var v = (data[i][0] || '').toString().trim();
-    if (v) names.push(v);
+  .sidebar{
+    background: var(--nuit);
+    padding: 24px 20px;
+    border-right: 3px dashed rgba(255,201,60,0.25);
+    display:flex; flex-direction:column; gap:20px;
   }
-  return names;
-}
-
-function writeRoster(names) {
-  var sheet = getSheet('Roster');
-  sheet.clear();
-  if (names.length > 0) {
-    sheet.getRange(1, 1, names.length, 1).setValues(names.map(function(n){ return [n]; }));
+  .sidebar h1{
+    font-size: 1.6rem; font-weight:800; margin:0 0 4px 0; letter-spacing:0.01em;
+    background: linear-gradient(90deg, var(--rouge), var(--jaune) 45%, var(--vert) 75%, var(--bleu));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-}
-
-function readLabels() {
-  var sheet = getSheet('Etiquettes');
-  var data = sheet.getDataRange().getValues();
-  var labels = {};
-  for (var i = 0; i < data.length; i++) {
-    var r = data[i][0];
-    var instrument = data[i][1];
-    if (r && instrument) labels[r] = instrument;
+  .title-sub{
+    display:block; font-family:'Space Grotesk',sans-serif; font-size:0.75rem; font-weight:600;
+    letter-spacing:0.08em; color: var(--slate); margin-top:2px;
   }
-  return labels;
-}
+  .sidebar .sub{ margin:0; color: var(--slate); font-size:0.85rem; line-height:1.5; }
 
-function writeLabels(labels) {
-  var sheet = getSheet('Etiquettes');
-  sheet.clear();
-  var rows = [];
-  for (var key in labels) {
-    rows.push([Number(key), labels[key]]);
-  }
-  if (rows.length > 0) {
-    sheet.getRange(1, 1, rows.length, 2).setValues(rows);
-  }
-}
+  .mode-bar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .mode-badge{ font-size:0.7rem; padding:5px 12px; border-radius:20px; font-weight:700; background: var(--unset); color: var(--slate); }
+  .mode-badge.on{ background: var(--jaune); color: var(--nuit-deep); }
+  .link-btn{ background:none; border:none; color: var(--jaune); font-size:0.78rem; text-decoration:underline; cursor:pointer; padding:0; font-family:inherit; font-weight:600; }
 
-function normalizeName(s) {
-  return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+  .stat-row{ display:flex; justify-content:space-between; align-items:baseline; padding: 8px 0; border-bottom: 1px solid rgba(255,246,229,0.08); font-size:0.85rem; }
+  .stat-row .num{ font-weight:800; color:var(--jaune); font-family:'Baloo 2',sans-serif; font-size:1.2rem; }
+  .stat-row .label{ font-size:0.78rem; color:var(--slate); }
+
+  .legend{ display:flex; flex-direction:column; gap:9px; }
+  .legend-item{ display:flex; align-items:center; gap:10px; font-size:0.82rem; color: var(--creme); cursor:pointer; }
+  .legend-item.dim{ opacity:0.3; }
+  .swatch{ width:20px; height:20px; flex-shrink:0; }
+  .swatch svg{ width:100%; height:100%; }
+
+  select, input[type=text]{
+    width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12);
+    color: var(--creme); padding: 9px 10px; border-radius:10px; font-family: inherit; font-size:0.9rem;
+  }
+  select:focus, input:focus{ outline:2px solid var(--jaune); border-color: var(--jaune); }
+  .panel-title{ font-size:0.72rem; letter-spacing:0.03em; color: var(--slate); margin: 0 0 8px 0; font-weight:600; }
+
+  #detail-panel{ background: var(--panel); border:2px solid rgba(255,201,60,0.18); border-radius:14px; padding:16px; min-height:120px; }
+  #detail-panel .empty-msg{ color: var(--slate); font-size:0.83rem; line-height:1.5; }
+  #detail-panel .pos-title{ font-family:'Baloo 2',sans-serif; font-size:1.15rem; color:var(--jaune); margin:0 0 10px 0; }
+  #detail-panel label{ display:block; font-size:0.73rem; color:var(--slate); margin: 10px 0 4px; }
+  #detail-panel .occupant-name{ font-size:1rem; font-weight:700; color:var(--creme); margin:0 0 4px 0; }
+  #detail-panel .occupant-instr{ font-size:0.8rem; color:var(--slate); margin:0 0 12px 0; }
+
+  .btn{ margin-top:12px; width:100%; padding:11px; border:none; border-radius:24px; font-family:'Baloo 2',sans-serif; font-weight:700; font-size:0.88rem; cursor:pointer; transition: transform 0.12s ease, filter 0.15s ease; }
+  .btn:hover{ transform: translateY(-1px); filter: brightness(1.08); }
+  .btn-save{ background: linear-gradient(90deg, var(--rouge), var(--jaune)); color: var(--nuit-deep); }
+  .btn-clear{ background: transparent; border:2px solid var(--rouge); color:#FF9B94; }
+  .btn-secondary{ background: transparent; border:2px solid rgba(255,246,229,0.25); color: var(--creme); }
+
+  .main{ padding: 28px 32px; overflow-x:auto; }
+  .main-header{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 18px; flex-wrap:wrap; gap:12px; }
+  .main-header h2{ margin:0; font-size:1.1rem; font-weight:700; color: var(--jaune); }
+  .direction-hint{ font-size:0.76rem; color: var(--slate); }
+
+  .formation{ display:flex; flex-direction:column; gap:7px; min-width: 420px; max-width:560px; margin: 0 auto; }
+  .row{ display:grid; grid-template-columns: 26px repeat(5, 1fr); gap:9px; align-items:center; }
+  .row-num{ font-size:0.7rem; color: var(--slate); text-align:right; font-variant-numeric: tabular-nums; font-weight:600; }
+  .row-group{ display:flex; flex-direction:column; gap:3px; }
+  .row-label-line{ display:flex; align-items:center; justify-content:center; gap:6px; padding-left:26px; }
+  .row-label-line .row-label-text{ font-size:0.66rem; color: var(--jaune); font-weight:700; letter-spacing:0.03em; }
+  .row-label-line .row-label-edit{ background:none; border:none; color: var(--slate); cursor:pointer; font-size:0.68rem; padding:0; }
+  .row-label-line .row-label-edit:hover{ color: var(--jaune); }
+  .pos{
+    aspect-ratio: 1; background: transparent; border: none;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    color: var(--unset); transition: transform 0.12s ease, filter 0.15s ease; position:relative;
+  }
+  .pos svg{ width:100%; height:100%; display:block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); transition: filter 0.15s ease; }
+  .pos .initials{
+    position:absolute; top:16%; left:50%; transform:translateX(-50%);
+    font-size:0.56rem; font-weight:700; color: var(--nuit-deep); pointer-events:none; letter-spacing:-0.02em;
+  }
+  .pos .instr-label{
+    position:absolute; top:58%; left:50%; transform:translateX(-50%);
+    font-size:0.5rem; font-weight:700; color: var(--creme); pointer-events:none; letter-spacing:0.02em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .pos:hover{ transform: scale(1.1); }
+  .pos:hover svg{ filter: drop-shadow(0 0 5px rgba(255,201,60,0.7)); }
+  .pos.selected{ transform: scale(1.22); z-index:2; }
+  .pos.selected::before{
+    content:''; position:absolute; inset:-6px; border-radius:50%;
+    background: rgba(255,201,60,0.22);
+    box-shadow: 0 0 0 3px var(--jaune), 0 0 16px rgba(255,201,60,0.85);
+  }
+  .pos.selected svg{ filter: drop-shadow(0 0 4px rgba(255,201,60,0.9)); position:relative; }
+  .pos.faded{ opacity:0.22; }
+  .pos.basse{ color: var(--bleu); }
+  .pos.contrebasse{ color: var(--violet); }
+  .pos.chan{ color: var(--rouge); }
+  .pos.konk{ color: var(--jaune); }
+  .pos.chacha{ color: var(--vert); }
+  .pos.taken .taken-dot{ fill: var(--nuit-deep); stroke: var(--taken-dot); stroke-width:2; }
+  .pos.blocked svg ellipse, .pos.blocked svg circle:not(.taken-dot){ fill: #5A5470 !important; opacity:0.55; }
+  .pos.blocked .initials{ color: var(--creme); font-size:0.75rem; }
+  .pos.blocked:hover{ transform: none; cursor: not-allowed; }
+  .pos.blocked:hover svg{ filter: none; }
+
+  .pos.removed{ visibility: hidden; }
+  .organizer-view .pos.removed{ visibility: visible; cursor:pointer; }
+  .organizer-view .pos.removed:hover svg{ filter: drop-shadow(0 0 4px rgba(255,201,60,0.6)); }
+
+  .front-line{ text-align:center; font-size:0.72rem; color: var(--jaune); letter-spacing: 0.06em; font-weight:700; padding-bottom:8px; border-bottom: 3px dashed rgba(255,201,60,0.3); margin-bottom:4px; }
+
+  .banner{ font-size:0.78rem; padding:11px 13px; border-radius:12px; background: rgba(255,201,60,0.1); border:2px solid rgba(255,201,60,0.3); color: var(--jaune); line-height:1.5; }
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background: linear-gradient(90deg, var(--rouge), var(--violet)); color:var(--creme); padding:11px 20px;
+    border-radius:24px; font-size:0.85rem; font-weight:600; opacity:0; transition:opacity 0.3s ease; pointer-events:none; z-index:50;
+  }
+  .toast.show{ opacity:1; }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--violet); border-radius:4px; }
+
+  #access-gate{
+    position:fixed; inset:0; background: var(--nuit-deep); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  #access-gate .card{
+    background: var(--panel); border:2px solid rgba(255,201,60,0.25); border-radius:18px;
+    padding: 28px 26px; max-width:340px; width:100%; text-align:center;
+  }
+  #access-gate h1{
+    font-size: 1.4rem; font-weight:800; margin:0 0 10px 0;
+    background: linear-gradient(90deg, var(--rouge), var(--jaune) 45%, var(--vert) 75%, var(--bleu));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #access-gate p{ color: var(--slate); font-size:0.85rem; margin:0 0 16px 0; line-height:1.5; }
+  #access-gate .gate-error{ color:#FF9B94; font-size:0.8rem; margin-top:8px; min-height:1.1em; }
+  #access-gate .switch-link{ margin-top:14px; }
+
+  .roster-list{ display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto; }
+  .roster-row{ display:flex; align-items:center; justify-content:space-between; background: rgba(255,246,229,0.05); border-radius:8px; padding:6px 10px; font-size:0.82rem; }
+  .roster-row button{ background:none; border:none; color:#FF9B94; cursor:pointer; font-size:0.9rem; padding:0 4px; }
+  .add-row{ display:flex; gap:6px; margin-top:10px; }
+  .add-row input{ flex:1; }
+  .add-row button{ width:auto; padding:9px 14px; margin-top:0; }
+</style>
+</head>
+<body>
+
+<div id="access-gate">
+  <div class="card">
+    <h1>KLÉ LA MASS<span class="title-sub">MISISYEN</span></h1>
+    <div id="gate-name-mode">
+      <p>Entre ton nom complet (tel que transmis à l'organisateur) pour accéder au plan.</p>
+      <input type="text" id="gate-name" placeholder="Ton nom complet" autocomplete="off">
+      <button class="btn btn-save" id="gate-submit">Entrer</button>
+      <p class="gate-error" id="gate-error"></p>
+      <button class="link-btn switch-link" id="gate-orga-link">Je suis l'organisateur</button>
+    </div>
+    <div id="gate-orga-mode" style="display:none;">
+      <p>Mot de passe organisateur.</p>
+      <input type="password" id="gate-orga-pass" placeholder="Mot de passe" autocomplete="off">
+      <button class="btn btn-save" id="gate-orga-submit">Entrer</button>
+      <p class="gate-error" id="gate-orga-error"></p>
+      <button class="link-btn switch-link" id="gate-back-link">← Retour</button>
+    </div>
+  </div>
+</div>
+
+<div class="layout" id="main-layout" style="display:none;">
+  <div class="sidebar">
+    <div>
+      <h1>KLÉ LA MASS<span class="title-sub">MISISYEN</span></h1>
+      <p class="sub">200 places · 40 rangées de 5. Clique une place libre de ton instrument pour réserver.</p>
+    </div>
+
+    <div class="mode-bar">
+      <span class="mode-badge" id="mode-badge">Mode musicien</span>
+      <button class="link-btn" id="btn-toggle-orga">Accès organisateur</button>
+      <button class="link-btn" id="btn-logout">Quitter</button>
+    </div>
+    <div id="orga-inline-login" style="display:none;">
+      <input type="password" id="orga-inline-pass" placeholder="Mot de passe organisateur">
+      <button class="btn btn-save" id="orga-inline-submit">Entrer</button>
+      <p class="gate-error" id="orga-inline-error"></p>
+    </div>
+
+    <div id="loading-msg" class="banner">Chargement du plan…</div>
+
+    <div id="stats-block" style="display:none;">
+      <div class="stat-row"><span><span class="num" id="stat-filled">0</span> <span class="label">/ 200 réservées</span></span></div>
+      <div class="stat-row"><span><span class="num" id="stat-blocked">0</span> <span class="label">bloquées</span></span></div>
+    </div>
+
+    <div id="legend-block" style="display:none;">
+      <p class="panel-title">INSTRUMENTS</p>
+      <div class="legend">
+        <div class="legend-item" data-filter=""><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--unset)"/><circle cx="20" cy="14" r="9" fill="var(--unset)"/></svg></span>Tous / non attribué</div>
+        <div class="legend-item" data-filter="basse"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--bleu)"/><circle cx="20" cy="14" r="9" fill="var(--bleu)"/></svg></span>Basse</div>
+        <div class="legend-item" data-filter="contrebasse"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--violet)"/><circle cx="20" cy="14" r="9" fill="var(--violet)"/></svg></span>Contrebasse</div>
+        <div class="legend-item" data-filter="chan"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--rouge)"/><circle cx="20" cy="14" r="9" fill="var(--rouge)"/></svg></span>Tambours chan</div>
+        <div class="legend-item" data-filter="konk"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--jaune)"/><circle cx="20" cy="14" r="9" fill="var(--jaune)"/></svg></span>Konk</div>
+        <div class="legend-item" data-filter="chacha"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--vert)"/><circle cx="20" cy="14" r="9" fill="var(--vert)"/></svg></span>Chacha</div>
+      </div>
+    </div>
+
+    <div id="detail-block" style="display:none;">
+      <p class="panel-title">DÉTAIL DE LA PLACE</p>
+      <div id="detail-panel">
+        <p class="empty-msg">Sélectionne une place dans la grille.</p>
+      </div>
+    </div>
+
+    <div id="roster-block" style="display:none;">
+      <p class="panel-title">MUSICIENS AUTORISÉS</p>
+      <div class="roster-list" id="roster-list"></div>
+      <div class="add-row">
+        <input type="text" id="roster-add-input" placeholder="Nom complet">
+        <button class="btn btn-save" id="roster-add-btn">Ajouter</button>
+      </div>
+      <label for="roster-bulk-input" style="margin-top:14px;">Ajout groupé (un nom par ligne)</label>
+      <textarea id="roster-bulk-input" rows="4" placeholder="Jean Baptiste&#10;Marie Sonson&#10;..." style="width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12); color: var(--creme); padding:9px 10px; border-radius:10px; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
+      <button class="btn btn-save" id="roster-bulk-btn">Ajouter la liste</button>
+    </div>
+
+    <div id="rowlabel-block" style="display:none;">
+      <p class="panel-title">ÉTIQUETTE DE RANGÉE</p>
+      <select id="rowlabel-select"></select>
+      <select id="rowlabel-instr-select" style="margin-top:8px;">
+        <option value="">— Aucune (retirer l'étiquette) —</option>
+        <option value="basse">Basse</option>
+        <option value="contrebasse">Contrebasse</option>
+        <option value="chan">Tambours chan</option>
+        <option value="konk">Konk</option>
+        <option value="chacha">Chacha</option>
+      </select>
+      <button class="btn btn-save" id="rowlabel-save-btn">Appliquer à toute la rangée</button>
+    </div>
+
+    <div id="reset-block" style="display:none;">
+      <p class="panel-title">ZONE SENSIBLE</p>
+      <button class="btn btn-clear" id="reset-open-btn">Réinitialiser toutes les places</button>
+      <div id="reset-confirm" style="display:none; margin-top:10px;">
+        <p class="empty-msg">Ça remet les 200 places à zéro (instruments, réservations, blocages, silhouettes supprimées) et efface aussi les étiquettes de rangée. La liste des musiciens autorisés est conservée. Irréversible.</p>
+        <button class="btn btn-clear" id="reset-confirm-btn">Oui, tout réinitialiser</button>
+        <button class="btn btn-secondary" id="reset-cancel-btn">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="main-header">
+      <h2>Formation — vue de dessus</h2>
+      <div class="direction-hint">▲ Tête du défilé en haut</div>
+    </div>
+    <div class="formation" id="formation">
+      <div class="front-line">TÊTE DU CORTÈGE</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ROWS = 40, COLS = 5;
+const API_URL = 'https://script.google.com/macros/s/AKfycbxPsziKBTl1xVIVGtFb5rbBY0HBHu0M4WVd-6oelWNGo6RdJ-BYVRiVNG0F1NQskRwW/exec';
+
+let grid = {};
+let roster = []; // array of authorized full names
+let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
+let selected = null;
+let isOrganizer = false;
+let currentUserName = '';
+let organizerPassword = '';
+let activeFilter = '';
+
+const sectionLabel = { basse: 'Basse', contrebasse: 'Contrebasse', chan: 'Tambours chan', konk: 'Konk', chacha: 'Chacha' };
+const sectionAbbrev = { basse: 'BA', contrebasse: 'CB', chan: 'TC', konk: 'KO', chacha: 'CC' };
+const sectionColorVar = { basse: '--bleu', contrebasse: '--violet', chan: '--rouge', konk: '--jaune', chacha: '--vert' };
+function keyOf(r,c){ return r + '-' + c; }
+
+function emptyGrid(){
+  const g = {};
+  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) g[keyOf(r,c)] = { instrument:'', name:'', blocked:false, removed:false };
+  return g;
 }
 
 // ------------------------------------------------------------
-// doGet : lecture (pas de mot de passe nécessaire)
+// Passerelle Google Sheet
 // ------------------------------------------------------------
-function doGet(e) {
-  var out = {
-    grid: readGrid(),
-    roster: readRoster(),
-    labels: readLabels()
-  };
-  return ContentService.createTextOutput(JSON.stringify(out))
-    .setMimeType(ContentService.MimeType.JSON);
+async function apiGet(){
+  const res = await fetch(API_URL);
+  return res.json();
 }
 
-// ------------------------------------------------------------
-// doPost : écriture (verrouillage pour éviter les conflits)
-// ------------------------------------------------------------
-function doPost(e) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+async function apiPost(payload){
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+async function loadAllData(){
   try {
-    var body = JSON.parse(e.postData.contents);
-    var action = body.action;
-    var result = { ok: false };
-
-    if (action === 'reserve') {
-      var r = body.row, c = body.col, name = body.name, instrument = body.instrument;
-      var grid = readGrid();
-      var key = r + '-' + c;
-      var cell = grid[key];
-      if (!cell || cell.name || cell.blocked || cell.removed) {
-        result = { ok: false, error: 'Place indisponible.' };
-      } else if (cell.instrument && cell.instrument !== instrument) {
-        result = { ok: false, error: "Cet instrument ne correspond pas à celui de cette rangée." };
-      } else if (!cell.instrument && !instrument) {
-        result = { ok: false, error: 'Choisis un instrument.' };
-      } else {
-        var alreadyHasSeat = Object.keys(grid).some(function(k) {
-          return grid[k].name && normalizeName(grid[k].name) === normalizeName(name);
-        });
-        if (alreadyHasSeat) {
-          result = { ok: false, error: 'Ce musicien a déjà une place.' };
-        } else {
-          var finalInstrument = cell.instrument || instrument;
-          writeCell(r, c, finalInstrument, name, false, false);
-          result = { ok: true };
-        }
-      }
-
-    } else if (action === 'release') {
-      var r = body.row, c = body.col, name = body.name;
-      var grid = readGrid();
-      var cell = grid[r + '-' + c];
-      if (cell && normalizeName(cell.name) === normalizeName(name)) {
-        var labels = readLabels();
-        var keepInstrument = labels[r] ? cell.instrument : '';
-        writeCell(r, c, keepInstrument, '', false, false);
-        result = { ok: true };
-      } else {
-        result = { ok: false, error: 'Cette place ne t\'appartient pas.' };
-      }
-
-    } else if (body.password !== ORGA_PASSWORD) {
-      result = { ok: false, error: 'Mot de passe organisateur incorrect.' };
-
-    } else if (action === 'checkOrgaPassword') {
-      result = { ok: true };
-
-    } else if (action === 'setCell') {
-      writeCell(body.row, body.col, body.instrument || '', body.name || '', !!body.blocked, !!body.removed);
-      result = { ok: true };
-
-    } else if (action === 'setRowInstrument') {
-      var r = body.row, instrument = body.instrument;
-      var grid = readGrid();
-      for (var c = 1; c <= COLS; c++) {
-        var cell = grid[r + '-' + c] || { name: '', blocked: false };
-        writeCell(r, c, instrument, cell.name, cell.blocked, false);
-      }
-      var labels = readLabels();
-      if (instrument) { labels[r] = instrument; } else { delete labels[r]; }
-      writeLabels(labels);
-      result = { ok: true };
-
-    } else if (action === 'resetGrid') {
-      var sheet = getSheet('Grille');
-      sheet.clear();
-      ensureGridInitialized();
-      writeLabels({});
-      result = { ok: true };
-
-    } else if (action === 'addRosterName') {
-      var roster = readRoster();
-      if (!roster.some(function(n){ return normalizeName(n) === normalizeName(body.name); })) {
-        roster.push(body.name);
-        writeRoster(roster);
-      }
-      result = { ok: true };
-
-    } else if (action === 'addRosterBulk') {
-      var roster = readRoster();
-      var added = 0;
-      (body.names || []).forEach(function(n) {
-        if (!roster.some(function(x){ return normalizeName(x) === normalizeName(n); })) {
-          roster.push(n);
-          added++;
-        }
-      });
-      writeRoster(roster);
-      result = { ok: true, added: added };
-
-    } else if (action === 'removeRosterName') {
-      var roster = readRoster().filter(function(n){ return normalizeName(n) !== normalizeName(body.name); });
-      writeRoster(roster);
-      result = { ok: true };
-
-    } else {
-      result = { ok: false, error: 'Action inconnue.' };
-    }
-
-    return ContentService.createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } finally {
-    lock.releaseLock();
+    const data = await apiGet();
+    grid = data.grid || emptyGrid();
+    roster = data.roster || [];
+    rowLabels = data.labels || {};
+    return true;
+  } catch(err){
+    grid = emptyGrid();
+    roster = [];
+    rowLabels = {};
+    return false;
   }
 }
+
+function normalizeName(s){ return (s || '').trim().toLowerCase().replace(/\s+/g,' '); }
+
+// ------------------------------------------------------------
+// Construction et rendu de la grille
+// ------------------------------------------------------------
+function buildGridDOM(){
+  const container = document.getElementById('formation');
+  container.querySelectorAll('.row-group').forEach(el => el.remove());
+  for(let r=1; r<=ROWS; r++){
+    const group = document.createElement('div');
+    group.className = 'row-group';
+
+    const labelLine = document.createElement('div');
+    labelLine.className = 'row-label-line';
+    labelLine.id = `row-label-line-${r}`;
+    group.appendChild(labelLine);
+
+    const rowEl = document.createElement('div');
+    rowEl.className = 'row';
+    const rowNum = document.createElement('div');
+    rowNum.className = 'row-num';
+    rowNum.textContent = r;
+    rowEl.appendChild(rowNum);
+    for(let c=1; c<=COLS; c++){
+      const pos = document.createElement('div');
+      pos.className = 'pos';
+      pos.dataset.r = r;
+      pos.dataset.c = c;
+      pos.addEventListener('click', () => selectPos(r,c));
+      rowEl.appendChild(pos);
+    }
+    group.appendChild(rowEl);
+    container.appendChild(group);
+  }
+}
+
+function refreshCell(r,c){
+  const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
+  const data = grid[keyOf(r,c)] || {instrument:'',name:'',blocked:false,removed:false};
+  el.className = 'pos';
+  if(data.instrument) el.classList.add(data.instrument);
+  if(data.name) el.classList.add('taken');
+  if(data.blocked) el.classList.add('blocked');
+  if(data.removed) el.classList.add('removed');
+
+  if(data.removed){
+    el.innerHTML = `
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="20" cy="27" rx="13" ry="9" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <circle cx="20" cy="14" r="9" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
+      </svg>
+    `;
+    el.title = 'Silhouette supprimée';
+    if(selected && selected.r===r && selected.c===c) el.classList.add('selected');
+    return;
+  }
+
+  const initials = data.name ? data.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : (data.blocked ? '🔒' : '');
+  const instrLabel = (data.instrument && !data.blocked) ? sectionAbbrev[data.instrument] : '';
+  el.innerHTML = `
+    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="20" cy="27" rx="13" ry="9" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
+      <circle cx="20" cy="14" r="9" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
+      ${data.name ? '<circle class="taken-dot" cx="34" cy="7" r="4"></circle>' : ''}
+    </svg>
+    ${initials ? `<span class="initials">${initials}</span>` : ''}
+    ${instrLabel ? `<span class="instr-label">${instrLabel}</span>` : ''}
+  `;
+
+  if(data.blocked){
+    el.title = 'Place bloquée par l\'organisateur';
+  } else if(data.name){
+    el.title = data.name + ' — ' + (sectionLabel[data.instrument] || '');
+  } else if(data.instrument){
+    el.title = sectionLabel[data.instrument] + ' — libre';
+  } else {
+    el.title = 'Non attribué';
+  }
+  if(activeFilter && data.instrument !== activeFilter) el.classList.add('faded');
+  if(selected && selected.r===r && selected.c===c) el.classList.add('selected');
+}
+
+function refreshAll(){
+  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) refreshCell(r,c);
+  updateStats();
+}
+
+function updateStats(){
+  const filled = Object.values(grid).filter(d => d.name).length;
+  const blocked = Object.values(grid).filter(d => d.blocked).length;
+  document.getElementById('stat-filled').textContent = filled;
+  document.getElementById('stat-blocked').textContent = blocked;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ------------------------------------------------------------
+// Musiciens autorisés (roster)
+// ------------------------------------------------------------
+function renderRoster(){
+  const list = document.getElementById('roster-list');
+  if(roster.length === 0){
+    list.innerHTML = '<p class="empty-msg">Aucun musicien ajouté pour l\'instant.</p>';
+    return;
+  }
+  list.innerHTML = roster.map((name, i) => `
+    <div class="roster-row">
+      <span>${name}</span>
+      <button data-idx="${i}" class="roster-remove" title="Retirer">✕</button>
+    </div>
+  `).join('');
+  document.querySelectorAll('.roster-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const name = roster[idx];
+      try {
+        await apiPost({ action:'removeRosterName', name, password: organizerPassword });
+        await loadAllData();
+        renderRoster();
+        showToast('Musicien retiré.');
+      } catch(err){ showToast('Erreur réseau, réessaie.'); }
+    });
+  });
+}
+
+document.getElementById('roster-add-btn').addEventListener('click', async () => {
+  const input = document.getElementById('roster-add-input');
+  const name = input.value.trim();
+  if(!name) return;
+  if(roster.some(n => normalizeName(n) === normalizeName(name))){
+    showToast('Ce nom est déjà dans la liste.');
+    return;
+  }
+  try {
+    const result = await apiPost({ action:'addRosterName', name, password: organizerPassword });
+    if(result.ok){
+      input.value = '';
+      await loadAllData();
+      renderRoster();
+      showToast('Musicien ajouté.');
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+document.getElementById('roster-bulk-btn').addEventListener('click', async () => {
+  const textarea = document.getElementById('roster-bulk-input');
+  const lines = textarea.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if(lines.length === 0) return;
+  try {
+    const result = await apiPost({ action:'addRosterBulk', names: lines, password: organizerPassword });
+    if(result.ok){
+      textarea.value = '';
+      await loadAllData();
+      renderRoster();
+      showToast(`${result.added} musicien(s) ajouté(s) sur ${lines.length}.`);
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+// ------------------------------------------------------------
+// Étiquette / couleur de rangée
+// ------------------------------------------------------------
+function populateRowLabelSelect(){
+  const select = document.getElementById('rowlabel-select');
+  if(select.options.length === 0){
+    for(let r=1; r<=ROWS; r++){
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = `Rangée ${r}`;
+      select.appendChild(opt);
+    }
+  }
+  syncRowLabelInput();
+}
+
+function syncRowLabelInput(){
+  const r = document.getElementById('rowlabel-select').value;
+  document.getElementById('rowlabel-instr-select').value = rowInstrumentOf(r) || '';
+}
+
+function rowInstrumentOf(r){
+  const label = rowLabels[r];
+  if(!label) return '';
+  const found = Object.keys(sectionLabel).find(k => sectionLabel[k] === label);
+  return found || '';
+}
+
+document.getElementById('rowlabel-select').addEventListener('change', syncRowLabelInput);
+document.getElementById('rowlabel-save-btn').addEventListener('click', async () => {
+  const r = document.getElementById('rowlabel-select').value;
+  const instrument = document.getElementById('rowlabel-instr-select').value;
+  try {
+    const result = await apiPost({ action:'setRowInstrument', row: Number(r), instrument, password: organizerPassword });
+    if(result.ok){
+      await loadAllData();
+      refreshAll();
+      renderRowLabel(r);
+      showToast(instrument ? `Rangée ${r} colorée en ${sectionLabel[instrument]}.` : `Étiquette et couleur retirées (rangée ${r}).`);
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+function renderRowLabel(r){
+  const line = document.getElementById(`row-label-line-${r}`);
+  if(!line) return;
+  const label = rowLabels[r] || '';
+  const instrument = rowInstrumentOf(r);
+  const colorVar = instrument ? sectionColorVar[instrument] : '--jaune';
+  line.innerHTML = label ? `<span class="row-label-text" style="color: var(${colorVar})">${label}</span>` : '';
+}
+
+function renderAllRowLabels(){
+  for(let r=1; r<=ROWS; r++) renderRowLabel(r);
+}
+
+// ------------------------------------------------------------
+// Réinitialisation totale
+// ------------------------------------------------------------
+document.getElementById('reset-open-btn').addEventListener('click', () => {
+  document.getElementById('reset-confirm').style.display = 'block';
+});
+document.getElementById('reset-cancel-btn').addEventListener('click', () => {
+  document.getElementById('reset-confirm').style.display = 'none';
+});
+document.getElementById('reset-confirm-btn').addEventListener('click', async () => {
+  try {
+    const result = await apiPost({ action:'resetGrid', password: organizerPassword });
+    document.getElementById('reset-confirm').style.display = 'none';
+    if(result.ok){
+      selected = null;
+      await loadAllData();
+      refreshAll();
+      renderAllRowLabels();
+      document.getElementById('detail-panel').innerHTML = '<p class="empty-msg">Sélectionne une place dans la grille.</p>';
+      showToast('Toutes les places et étiquettes ont été réinitialisées.');
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+// ------------------------------------------------------------
+// Chargement initial de la grille
+// ------------------------------------------------------------
+async function loadGrid(){
+  await loadAllData();
+  document.getElementById('loading-msg').style.display = 'none';
+  document.getElementById('stats-block').style.display = 'block';
+  document.getElementById('legend-block').style.display = 'block';
+  document.getElementById('detail-block').style.display = 'block';
+  refreshAll();
+}
+
+function selectPos(r,c){
+  selected = {r,c};
+  refreshAll();
+  renderDetail(r,c);
+}
+
+// ------------------------------------------------------------
+// Détail d'une place
+// ------------------------------------------------------------
+function renderDetail(r,c){
+  const data = grid[keyOf(r,c)] || { instrument:'', name:'', blocked:false, removed:false };
+  const panel = document.getElementById('detail-panel');
+
+  if(isOrganizer){
+    if(data.removed){
+      panel.innerHTML = `
+        <p class="pos-title">Rangée ${r}, position ${c}</p>
+        <p class="empty-msg">Cette silhouette est supprimée de la formation (place qui n'existe pas physiquement).</p>
+        <button class="btn btn-save" id="btn-restore">Restaurer cette place</button>
+      `;
+      document.getElementById('btn-restore').addEventListener('click', async () => {
+        await setCellRemote(r, c, '', '', false, false);
+        showToast('Place restaurée.');
+        renderDetail(r,c);
+      });
+      return;
+    }
+    panel.innerHTML = `
+      <p class="pos-title">Rangée ${r}, position ${c}</p>
+      ${data.blocked ? '<p class="occupant-instr">🔒 Place actuellement bloquée</p>' : ''}
+      <label for="inp-instr">Instrument</label>
+      <select id="inp-instr">
+        <option value="">— Non attribué —</option>
+        <option value="basse" ${data.instrument==='basse'?'selected':''}>Basse</option>
+        <option value="contrebasse" ${data.instrument==='contrebasse'?'selected':''}>Contrebasse</option>
+        <option value="chan" ${data.instrument==='chan'?'selected':''}>Tambours chan</option>
+        <option value="konk" ${data.instrument==='konk'?'selected':''}>Konk</option>
+        <option value="chacha" ${data.instrument==='chacha'?'selected':''}>Chacha</option>
+      </select>
+      <label for="inp-name">Nom du musicien (optionnel)</label>
+      <input type="text" id="inp-name" value="${data.name || ''}" placeholder="Ex. Jean Baptiste">
+      <button class="btn btn-save" id="btn-save">Enregistrer</button>
+      <button class="btn btn-secondary" id="btn-toggle-block">${data.blocked ? 'Débloquer cette place' : 'Bloquer cette place (non réservable)'}</button>
+      <button class="btn btn-secondary" id="btn-remove">Supprimer cette silhouette</button>
+      <button class="btn btn-clear" id="btn-clear">Réinitialiser cette place</button>
+    `;
+    document.getElementById('btn-save').addEventListener('click', async () => {
+      const instrument = document.getElementById('inp-instr').value;
+      const name = document.getElementById('inp-name').value.trim();
+      await setCellRemote(r, c, instrument, name, !!data.blocked, false);
+      showToast('Place mise à jour.');
+    });
+    document.getElementById('btn-toggle-block').addEventListener('click', async () => {
+      await setCellRemote(r, c, data.instrument, data.name, !data.blocked, false);
+      showToast(data.blocked ? 'Place débloquée.' : 'Place bloquée.');
+      renderDetail(r,c);
+    });
+    document.getElementById('btn-remove').addEventListener('click', async () => {
+      await setCellRemote(r, c, '', '', false, true);
+      showToast('Silhouette supprimée.');
+      renderDetail(r,c);
+    });
+    document.getElementById('btn-clear').addEventListener('click', async () => {
+      await setCellRemote(r, c, '', '', false, false);
+      showToast('Place réinitialisée.');
+    });
+    return;
+  }
+
+  if(data.blocked){
+    panel.innerHTML = `<p class="pos-title">Rangée ${r}, position ${c}</p><p class="empty-msg">🔒 Cette place est réservée par l'organisation et n'est pas disponible à la réservation.</p>`;
+    return;
+  }
+  const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Non attribué';
+  if(data.name){
+    const isMine = data.name === currentUserName;
+    panel.innerHTML = `
+      <p class="pos-title">Rangée ${r}, position ${c}</p>
+      <p class="occupant-name">${data.name}</p>
+      <p class="occupant-instr">${instrDisplay} — place réservée${isMine ? ' (toi)' : ''}</p>
+      ${isMine ? '<button class="btn btn-clear" id="btn-release">Libérer ma place</button>' : ''}
+    `;
+    if(isMine){
+      document.getElementById('btn-release').addEventListener('click', async () => {
+        try {
+          const result = await apiPost({ action:'release', row:r, col:c, name: currentUserName });
+          if(result.ok){
+            await loadAllData();
+            refreshAll();
+            showToast('Place libérée.');
+            renderDetail(r,c);
+          } else {
+            showToast(result.error || 'Erreur, réessaie.');
+          }
+        } catch(err){ showToast('Erreur réseau, réessaie.'); }
+      });
+    }
+    return;
+  }
+  const existing = isOrganizer ? null : findUserPosition();
+  if(existing && (existing.r !== r || existing.c !== c)){
+    panel.innerHTML = `
+      <p class="pos-title">Rangée ${r}, position ${c}</p>
+      <p class="occupant-instr">${instrDisplay} — place libre</p>
+      <p class="empty-msg">Tu as déjà réservé une place : rangée ${existing.r}, position ${existing.c}. Libère-la d'abord si tu veux en changer.</p>
+    `;
+    return;
+  }
+  const isRowLocked = !!data.instrument;
+  const instrSelectHtml = isRowLocked ? '' : `
+    <label for="inp-reserve-instr">Ton instrument</label>
+    <select id="inp-reserve-instr">
+      <option value="">— Choisir —</option>
+      <option value="basse">Basse</option>
+      <option value="contrebasse">Contrebasse</option>
+      <option value="chan">Tambours chan</option>
+      <option value="konk">Konk</option>
+      <option value="chacha">Chacha</option>
+    </select>`;
+  panel.innerHTML = `
+    <p class="pos-title">Rangée ${r}, position ${c}</p>
+    <p class="occupant-instr">${instrDisplay} — place libre</p>
+    ${instrSelectHtml}
+    <p class="occupant-name">${currentUserName}</p>
+    <button class="btn btn-save" id="btn-reserve">Réserver cette place</button>
+  `;
+  document.getElementById('btn-reserve').addEventListener('click', async () => {
+    let instrument = data.instrument;
+    if(!instrument){
+      instrument = document.getElementById('inp-reserve-instr').value;
+      if(!instrument){ showToast('Choisis ton instrument.'); return; }
+    }
+    try {
+      const result = await apiPost({ action:'reserve', row:r, col:c, name: currentUserName, instrument });
+      if(result.ok){
+        await loadAllData();
+        refreshAll();
+        showToast('Place réservée !');
+        renderDetail(r,c);
+      } else {
+        await loadAllData();
+        refreshAll();
+        showToast(result.error || "Cette place n'est plus disponible.");
+        renderDetail(r,c);
+      }
+    } catch(err){ showToast('Erreur réseau, réessaie.'); }
+  });
+}
+
+async function setCellRemote(r, c, instrument, name, blocked, removed){
+  try {
+    const result = await apiPost({ action:'setCell', row:r, col:c, instrument, name, blocked, removed, password: organizerPassword });
+    if(result.ok){
+      await loadAllData();
+      refreshAll();
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+    return result.ok;
+  } catch(err){
+    showToast('Erreur réseau, réessaie.');
+    return false;
+  }
+}
+
+function findUserPosition(){
+  if(!currentUserName) return null;
+  for(const [key, cell] of Object.entries(grid)){
+    if(cell.name === currentUserName){
+      const [r,c] = key.split('-').map(Number);
+      return { r, c };
+    }
+  }
+  return null;
+}
+
+// ------------------------------------------------------------
+// Navigation / connexion
+// ------------------------------------------------------------
+function goToGate(){
+  isOrganizer = false;
+  currentUserName = '';
+  organizerPassword = '';
+  selected = null;
+  document.getElementById('main-layout').classList.remove('organizer-view');
+  document.getElementById('main-layout').style.display = 'none';
+  document.getElementById('access-gate').style.display = 'flex';
+  document.getElementById('gate-orga-mode').style.display = 'none';
+  document.getElementById('gate-name-mode').style.display = 'block';
+  document.getElementById('gate-name').value = '';
+  document.getElementById('gate-error').textContent = '';
+  document.getElementById('orga-inline-login').style.display = 'none';
+}
+document.getElementById('btn-logout').addEventListener('click', goToGate);
+
+document.getElementById('btn-toggle-orga').addEventListener('click', () => {
+  if(isOrganizer){
+    goToGate();
+    return;
+  }
+  document.getElementById('orga-inline-login').style.display = 'block';
+  document.getElementById('orga-inline-pass').value = '';
+  document.getElementById('orga-inline-error').textContent = '';
+  document.getElementById('orga-inline-pass').focus();
+});
+
+async function submitOrgaInline(){
+  const pwd = document.getElementById('orga-inline-pass').value;
+  try {
+    const result = await apiPost({ action:'checkOrgaPassword', password: pwd });
+    if(result.ok){
+      organizerPassword = pwd;
+      isOrganizer = true;
+      document.getElementById('main-layout').classList.add('organizer-view');
+      document.getElementById('orga-inline-login').style.display = 'none';
+      document.getElementById('mode-badge').textContent = 'Mode organisateur';
+      document.getElementById('mode-badge').classList.add('on');
+      document.getElementById('btn-toggle-orga').textContent = 'Quitter le mode organisateur';
+      document.getElementById('roster-block').style.display = 'block';
+      renderRoster();
+      document.getElementById('rowlabel-block').style.display = 'block';
+      document.getElementById('reset-block').style.display = 'block';
+      populateRowLabelSelect();
+      renderAllRowLabels();
+      showToast('Mode organisateur activé.');
+    } else {
+      document.getElementById('orga-inline-error').textContent = 'Mot de passe incorrect.';
+    }
+  } catch(err){
+    document.getElementById('orga-inline-error').textContent = 'Erreur réseau, réessaie.';
+  }
+}
+document.getElementById('orga-inline-submit').addEventListener('click', submitOrgaInline);
+document.getElementById('orga-inline-pass').addEventListener('keydown', (e) => { if(e.key === 'Enter') submitOrgaInline(); });
+
+document.querySelectorAll('.legend-item').forEach(item => {
+  item.addEventListener('click', () => {
+    activeFilter = item.dataset.filter;
+    document.querySelectorAll('.legend-item').forEach(i => i.classList.remove('dim'));
+    if(activeFilter){
+      document.querySelectorAll('.legend-item').forEach(i => {
+        if(i.dataset.filter !== activeFilter) i.classList.add('dim');
+      });
+    }
+    refreshAll();
+  });
+});
+
+document.getElementById('gate-submit').addEventListener('click', tryNameEntry);
+document.getElementById('gate-name').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryNameEntry(); });
+document.getElementById('gate-orga-submit').addEventListener('click', tryOrgaEntry);
+document.getElementById('gate-orga-pass').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryOrgaEntry(); });
+
+document.getElementById('gate-orga-link').addEventListener('click', () => {
+  document.getElementById('gate-name-mode').style.display = 'none';
+  document.getElementById('gate-orga-mode').style.display = 'block';
+});
+document.getElementById('gate-back-link').addEventListener('click', () => {
+  document.getElementById('gate-orga-mode').style.display = 'none';
+  document.getElementById('gate-name-mode').style.display = 'block';
+});
+
+async function tryNameEntry(){
+  const typed = document.getElementById('gate-name').value;
+  const norm = normalizeName(typed);
+  if(!norm){ document.getElementById('gate-error').textContent = 'Indique ton nom.'; return; }
+  try {
+    await loadAllData(); // refresh in case the organizer just added someone
+    const match = roster.find(n => normalizeName(n) === norm);
+    if(!match){
+      document.getElementById('gate-error').textContent = "Nom non reconnu. Contacte l'organisateur.";
+      return;
+    }
+    currentUserName = match;
+    openApp(false);
+  } catch(err){
+    document.getElementById('gate-error').textContent = 'Erreur réseau, réessaie.';
+  }
+}
+
+async function tryOrgaEntry(){
+  const pwd = document.getElementById('gate-orga-pass').value;
+  try {
+    const result = await apiPost({ action:'checkOrgaPassword', password: pwd });
+    if(!result.ok){
+      document.getElementById('gate-orga-error').textContent = 'Mot de passe incorrect.';
+      return;
+    }
+    organizerPassword = pwd;
+    await loadAllData();
+    openApp(true);
+  } catch(err){
+    document.getElementById('gate-orga-error').textContent = 'Erreur réseau, réessaie.';
+  }
+}
+
+function openApp(asOrganizer){
+  isOrganizer = asOrganizer;
+  document.getElementById('access-gate').style.display = 'none';
+  document.getElementById('main-layout').style.display = 'grid';
+  if(isOrganizer){
+    document.getElementById('main-layout').classList.add('organizer-view');
+    document.getElementById('mode-badge').textContent = 'Mode organisateur';
+    document.getElementById('mode-badge').classList.add('on');
+    document.getElementById('btn-toggle-orga').textContent = 'Quitter le mode organisateur';
+    document.getElementById('roster-block').style.display = 'block';
+    renderRoster();
+    document.getElementById('rowlabel-block').style.display = 'block';
+    document.getElementById('reset-block').style.display = 'block';
+    populateRowLabelSelect();
+  } else {
+    document.getElementById('main-layout').classList.remove('organizer-view');
+    document.getElementById('mode-badge').textContent = 'Mode musicien';
+    document.getElementById('mode-badge').classList.remove('on');
+    document.getElementById('btn-toggle-orga').textContent = 'Accès organisateur';
+    document.getElementById('roster-block').style.display = 'none';
+    document.getElementById('rowlabel-block').style.display = 'none';
+    document.getElementById('reset-block').style.display = 'none';
+  }
+  buildGridDOM();
+  loadGrid();
+  renderAllRowLabels();
+}
+</script>
+
+</body>
+</html>
