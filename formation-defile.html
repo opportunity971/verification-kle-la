@@ -690,16 +690,13 @@ function renderDetail(r,c){
     panel.innerHTML = `<p class="pos-title">Rangée ${r}, position ${c}</p><p class="empty-msg">🔒 Cette place est réservée par l'organisation et n'est pas disponible à la réservation.</p>`;
     return;
   }
-  if(!data.instrument){
-    panel.innerHTML = `<p class="pos-title">Rangée ${r}, position ${c}</p><p class="empty-msg">Cette place n'a pas encore d'instrument attribué. Contacte l'organisateur.</p>`;
-    return;
-  }
+  const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Non attribué';
   if(data.name){
     const isMine = data.name === currentUserName;
     panel.innerHTML = `
       <p class="pos-title">Rangée ${r}, position ${c}</p>
       <p class="occupant-name">${data.name}</p>
-      <p class="occupant-instr">${sectionLabel[data.instrument]} — place réservée${isMine ? ' (toi)' : ''}</p>
+      <p class="occupant-instr">${instrDisplay} — place réservée${isMine ? ' (toi)' : ''}</p>
       ${isMine ? '<button class="btn btn-clear" id="btn-release">Libérer ma place</button>' : ''}
     `;
     if(isMine){
@@ -723,14 +720,14 @@ function renderDetail(r,c){
   if(existing && (existing.r !== r || existing.c !== c)){
     panel.innerHTML = `
       <p class="pos-title">Rangée ${r}, position ${c}</p>
-      <p class="occupant-instr">${sectionLabel[data.instrument]} — place libre</p>
+      <p class="occupant-instr">${instrDisplay} — place libre</p>
       <p class="empty-msg">Tu as déjà réservé une place : rangée ${existing.r}, position ${existing.c}. Libère-la d'abord si tu veux en changer.</p>
     `;
     return;
   }
   panel.innerHTML = `
     <p class="pos-title">Rangée ${r}, position ${c}</p>
-    <p class="occupant-instr">${sectionLabel[data.instrument]} — place libre</p>
+    <p class="occupant-instr">${instrDisplay} — place libre</p>
     <p class="occupant-name">${currentUserName}</p>
     <button class="btn btn-save" id="btn-reserve">Réserver cette place</button>
   `;
