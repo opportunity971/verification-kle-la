@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -127,6 +128,13 @@
     font-size:0.5rem; font-weight:700; color: var(--creme); pointer-events:none; letter-spacing:0.02em;
     text-shadow: 0 1px 2px rgba(0,0,0,0.6);
   }
+  .pos .photo-ring{
+    position:absolute; top:6%; left:50%; transform:translateX(-50%);
+    width:42%; height:42%; border-radius:50%; overflow:hidden;
+    border:2px solid currentColor; box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+    pointer-events:none; background: var(--nuit-deep);
+  }
+  .pos .photo-ring img{ width:100%; height:100%; object-fit:cover; display:block; }
   .pos:hover{ transform: scale(1.1); }
   .pos:hover svg{ filter: drop-shadow(0 0 5px rgba(255,201,60,0.7)); }
   .pos.selected{ transform: scale(1.22); z-index:2; }
@@ -357,10 +365,12 @@
 const COLS = 5;
 let ROWS = 40; // valeur par défaut, écrasée dès le premier chargement par la valeur réelle du Google Sheet
 const API_URL = 'https://script.google.com/macros/s/AKfycbxPsziKBTl1xVIVGtFb5rbBY0HBHu0M4WVd-6oelWNGo6RdJ-BYVRiVNG0F1NQskRwW/exec';
+const PHOTOS_URL = 'https://raw.githubusercontent.com/opportunity971/verification-kle-la/main/photos.json';
 
 let grid = {};
 let roster = []; // array of authorized full names
 let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
+let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
 let selected = null;
 let isOrganizer = false;
 let currentUserName = '';
@@ -379,6 +389,30 @@ function emptyGrid(){
   const g = {};
   for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) g[keyOf(r,c)] = { instrument:'', name:'', blocked:false, removed:false };
   return g;
+}
+
+// ------------------------------------------------------------
+// Photos des musiciens (photos.json, chargé une fois au démarrage)
+// ------------------------------------------------------------
+async function loadPhotoMap(){
+  try {
+    const res = await fetch(PHOTOS_URL, { cache: 'no-store' });
+    if(!res.ok) throw new Error('photos.json indisponible');
+    const raw = await res.json();
+    const map = {};
+    Object.keys(raw || {}).forEach(name => {
+      map[normalizeName(name)] = raw[name];
+    });
+    photoMap = map;
+  } catch(err){
+    // Repli silencieux : pas de photos disponibles, l'affichage classique reste utilisé partout.
+    photoMap = {};
+  }
+}
+
+function photoUrlFor(name){
+  if(!name) return '';
+  return photoMap[normalizeName(name)] || '';
 }
 
 // ------------------------------------------------------------
@@ -473,12 +507,16 @@ function refreshCell(r,c){
 
   const initials = data.name ? data.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : (data.blocked ? '🔒' : '');
   const instrLabel = (data.instrument && !data.blocked) ? sectionAbbrev[data.instrument] : '';
+  // Photo du musicien si la place est occupée et qu'une photo existe pour ce nom ; repli silencieux sinon.
+  const photoUrl = (data.name && !data.blocked) ? photoUrlFor(data.name) : '';
+  const photoHtml = photoUrl ? `<span class="photo-ring"><img src="${photoUrl}" alt="" loading="lazy" onerror="this.parentElement.style.display='none';"></span>` : '';
   el.innerHTML = `
     <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
       <path d="${SILHOUETTE_PATH}" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
       <circle cx="20" cy="13" r="7.5" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
     </svg>
-    ${initials ? `<span class="initials">${initials}</span>` : ''}
+    ${photoHtml}
+    ${(!photoUrl && initials) ? `<span class="initials">${initials}</span>` : ''}
     ${instrLabel ? `<span class="instr-label">${instrLabel}</span>` : ''}
   `;
 
@@ -747,7 +785,7 @@ document.getElementById('reset-confirm-btn').addEventListener('click', async () 
 // Chargement initial de la grille
 // ------------------------------------------------------------
 async function loadGrid(){
-  await loadAllData();
+  await Promise.all([loadAllData(), loadPhotoMap()]);
   buildGridDOM();
   applyZoom();
   document.getElementById('loading-msg').style.display = 'none';
