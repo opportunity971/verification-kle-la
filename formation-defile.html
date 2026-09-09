@@ -111,11 +111,11 @@
   }
   .pos svg{ width:100%; height:100%; display:block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); transition: filter 0.15s ease; }
   .pos .initials{
-    position:absolute; top:16%; left:50%; transform:translateX(-50%);
+    position:absolute; top:14%; left:50%; transform:translateX(-50%);
     font-size:0.56rem; font-weight:700; color: var(--nuit-deep); pointer-events:none; letter-spacing:-0.02em;
   }
   .pos .instr-label{
-    position:absolute; top:58%; left:50%; transform:translateX(-50%);
+    position:absolute; top:60%; left:50%; transform:translateX(-50%);
     font-size:0.5rem; font-weight:700; color: var(--creme); pointer-events:none; letter-spacing:0.02em;
     text-shadow: 0 1px 2px rgba(0,0,0,0.6);
   }
@@ -135,7 +135,11 @@
   .pos.konk{ color: var(--jaune); }
   .pos.chacha{ color: var(--vert); }
   .pos.taken .taken-dot{ fill: var(--nuit-deep); stroke: var(--taken-dot); stroke-width:2; }
-  .pos.blocked svg ellipse, .pos.blocked svg circle:not(.taken-dot){ fill: #5A5470 !important; opacity:0.55; }
+  /* Place réservée : couleur d'instrument conservée mais assourdie/grisée */
+  .pos.taken svg{ filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)) saturate(0.5) brightness(0.8); }
+  .pos.taken:hover svg{ filter: drop-shadow(0 0 5px rgba(255,201,60,0.55)) saturate(0.5) brightness(0.8); }
+  .pos.taken .initials{ color: rgba(20,15,38,0.85); }
+  .pos.blocked svg path, .pos.blocked svg circle:not(.taken-dot){ fill: #5A5470 !important; opacity:0.55; }
   .pos.blocked .initials{ color: var(--creme); font-size:0.75rem; }
   .pos.blocked:hover{ transform: none; cursor: not-allowed; }
   .pos.blocked:hover svg{ filter: none; }
@@ -232,12 +236,12 @@
     <div id="legend-block" style="display:none;">
       <p class="panel-title">INSTRUMENTS</p>
       <div class="legend">
-        <div class="legend-item" data-filter=""><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--unset)"/><circle cx="20" cy="14" r="9" fill="var(--unset)"/></svg></span>Tous / non attribué</div>
-        <div class="legend-item" data-filter="basse"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--bleu)"/><circle cx="20" cy="14" r="9" fill="var(--bleu)"/></svg></span>Basse</div>
-        <div class="legend-item" data-filter="contrebasse"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--violet)"/><circle cx="20" cy="14" r="9" fill="var(--violet)"/></svg></span>Contrebasse</div>
-        <div class="legend-item" data-filter="chan"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--rouge)"/><circle cx="20" cy="14" r="9" fill="var(--rouge)"/></svg></span>Tambours chan</div>
-        <div class="legend-item" data-filter="konk"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--jaune)"/><circle cx="20" cy="14" r="9" fill="var(--jaune)"/></svg></span>Konk</div>
-        <div class="legend-item" data-filter="chacha"><span class="swatch"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="27" rx="13" ry="9" fill="var(--vert)"/><circle cx="20" cy="14" r="9" fill="var(--vert)"/></svg></span>Chacha</div>
+        <div class="legend-item" data-filter=""><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--unset)"/><circle cx="20" cy="13" r="7.5" fill="var(--unset)"/></svg></span>Tous / non attribué</div>
+        <div class="legend-item" data-filter="basse"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--bleu)"/><circle cx="20" cy="13" r="7.5" fill="var(--bleu)"/></svg></span>Basse</div>
+        <div class="legend-item" data-filter="contrebasse"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--violet)"/><circle cx="20" cy="13" r="7.5" fill="var(--violet)"/></svg></span>Contrebasse</div>
+        <div class="legend-item" data-filter="chan"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--rouge)"/><circle cx="20" cy="13" r="7.5" fill="var(--rouge)"/></svg></span>Tambours chan</div>
+        <div class="legend-item" data-filter="konk"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--jaune)"/><circle cx="20" cy="13" r="7.5" fill="var(--jaune)"/></svg></span>Konk</div>
+        <div class="legend-item" data-filter="chacha"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--vert)"/><circle cx="20" cy="13" r="7.5" fill="var(--vert)"/></svg></span>Chacha</div>
       </div>
     </div>
 
@@ -315,6 +319,9 @@ const sectionLabel = { basse: 'Basse', contrebasse: 'Contrebasse', chan: 'Tambou
 const sectionAbbrev = { basse: 'BA', contrebasse: 'CB', chan: 'TC', konk: 'KO', chacha: 'CC' };
 const sectionColorVar = { basse: '--bleu', contrebasse: '--violet', chan: '--rouge', konk: '--jaune', chacha: '--vert' };
 function keyOf(r,c){ return r + '-' + c; }
+
+// Silhouette humaine stylisée, vue de dessus (épaules arrondies + tête)
+const SILHOUETTE_PATH = 'M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z';
 
 function emptyGrid(){
   const g = {};
@@ -402,8 +409,8 @@ function refreshCell(r,c){
   if(data.removed){
     el.innerHTML = `
       <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="20" cy="27" rx="13" ry="9" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
-        <circle cx="20" cy="14" r="9" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <path d="${SILHOUETTE_PATH}" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <circle cx="20" cy="13" r="7.5" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
       </svg>
     `;
     el.title = 'Silhouette supprimée';
@@ -415,8 +422,8 @@ function refreshCell(r,c){
   const instrLabel = (data.instrument && !data.blocked) ? sectionAbbrev[data.instrument] : '';
   el.innerHTML = `
     <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="20" cy="27" rx="13" ry="9" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
-      <circle cx="20" cy="14" r="9" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
+      <path d="${SILHOUETTE_PATH}" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
+      <circle cx="20" cy="13" r="7.5" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
       ${data.name ? '<circle class="taken-dot" cx="34" cy="7" r="4"></circle>' : ''}
     </svg>
     ${initials ? `<span class="initials">${initials}</span>` : ''}
