@@ -226,7 +226,7 @@
   <div class="sidebar">
     <div>
       <h1>KLÉ LA MASS<span class="title-sub">MISISYEN</span></h1>
-      <p class="sub">200 places · 40 rangées de 5. Clique une place libre de ton instrument pour réserver.</p>
+      <p class="sub" id="intro-sub">200 places · 40 rangées de 5. Clique une place libre de ton instrument pour réserver.</p>
     </div>
 
     <div class="mode-bar">
@@ -243,7 +243,7 @@
     <div id="loading-msg" class="banner">Chargement du plan…</div>
 
     <div id="stats-block" style="display:none;">
-      <div class="stat-row"><span><span class="num" id="stat-filled">0</span> <span class="label">/ 200 réservées</span></span></div>
+      <div class="stat-row"><span><span class="num" id="stat-filled">0</span> <span class="label">/ <span id="stat-total">200</span> réservées</span></span></div>
       <div class="stat-row"><span><span class="num" id="stat-blocked">0</span> <span class="label">bloquées</span></span></div>
       <div id="instrument-stats" class="instrument-stats"></div>
     </div>
@@ -483,6 +483,8 @@ function updateStats(){
   const blocked = Object.values(grid).filter(d => d.blocked).length;
   document.getElementById('stat-filled').textContent = filled;
   document.getElementById('stat-blocked').textContent = blocked;
+  document.getElementById('stat-total').textContent = ROWS * COLS;
+  document.getElementById('intro-sub').textContent = `${ROWS * COLS} places · ${ROWS} rangées de 5. Clique une place libre de ton instrument pour réserver.`;
 
   const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0 };
   Object.values(grid).forEach(d => {
