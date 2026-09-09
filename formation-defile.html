@@ -159,14 +159,21 @@
 
   .front-line{ text-align:center; font-size:0.72rem; color: var(--jaune); letter-spacing: 0.06em; font-weight:700; padding-bottom:8px; border-bottom: 3px dashed rgba(255,201,60,0.3); margin-bottom:4px; }
 
-  /* Vue d'ensemble : formation compacte pour voir tout l'orchestre d'un coup */
-  .formation.overview{ gap:2px; max-width:300px; min-width:220px; }
-  .formation.overview .row{ gap:2px; }
-  .formation.overview .row-num{ font-size:0.5rem; }
-  .formation.overview .row-label-line{ display:none; }
-  .formation.overview .pos .initials,
-  .formation.overview .pos .instr-label{ display:none; }
-  .formation.overview .front-line{ font-size:0.6rem; padding-bottom:4px; margin-bottom:2px; }
+  /* Zoom manuel de la formation */
+  .formation-viewport{ margin: 0 auto; }
+  #formation{ transform-origin: top left; transition: transform 0.08s ease; }
+
+  .zoom-control{ display:flex; align-items:center; gap:8px; }
+  .zoom-btn{
+    width:26px; height:26px; border-radius:50%; border:2px solid rgba(255,246,229,0.25);
+    background: transparent; color: var(--creme); font-family:'Baloo 2',sans-serif; font-size:1rem;
+    font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;
+    transition: filter 0.15s ease, transform 0.12s ease;
+  }
+  .zoom-btn:hover{ filter:brightness(1.2); transform: translateY(-1px); }
+  .zoom-btn:active{ transform: translateY(0); }
+  #zoom-slider{ width:110px; accent-color: var(--jaune); cursor:pointer; }
+  .zoom-value{ font-size:0.72rem; color: var(--slate); min-width:34px; text-align:right; font-variant-numeric: tabular-nums; }
 
   .banner{ font-size:0.78rem; padding:11px 13px; border-radius:12px; background: rgba(255,201,60,0.1); border:2px solid rgba(255,201,60,0.3); color: var(--jaune); line-height:1.5; }
   .toast{
@@ -327,12 +334,19 @@
     <div class="main-header">
       <h2>Formation — vue de dessus</h2>
       <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-        <button class="link-btn" id="btn-toggle-zoom">Vue d'ensemble</button>
+        <div class="zoom-control">
+          <button class="zoom-btn" id="zoom-out-btn" title="Dézoomer" aria-label="Dézoomer">−</button>
+          <input type="range" id="zoom-slider" min="40" max="200" step="5" value="100" aria-label="Niveau de zoom">
+          <button class="zoom-btn" id="zoom-in-btn" title="Zoomer" aria-label="Zoomer">+</button>
+          <span class="zoom-value" id="zoom-value">100%</span>
+        </div>
         <div class="direction-hint">▲ Tête du défilé en haut</div>
       </div>
     </div>
-    <div class="formation" id="formation">
-      <div class="front-line">TÊTE DU CORTÈGE</div>
+    <div class="formation-viewport" id="formation-viewport">
+      <div class="formation" id="formation">
+        <div class="front-line">TÊTE DU CORTÈGE</div>
+      </div>
     </div>
   </div>
 </div>
@@ -672,6 +686,7 @@ async function reloadAfterRowStructureChange(){
   selected = null;
   await loadAllData();
   buildGridDOM();
+  applyZoom();
   refreshAll();
   renderAllRowLabels();
   populateRowLabelSelect();
@@ -734,6 +749,7 @@ document.getElementById('reset-confirm-btn').addEventListener('click', async () 
 async function loadGrid(){
   await loadAllData();
   buildGridDOM();
+  applyZoom();
   document.getElementById('loading-msg').style.display = 'none';
   document.getElementById('stats-block').style.display = 'block';
   document.getElementById('legend-block').style.display = 'block';
@@ -1000,12 +1016,62 @@ document.querySelectorAll('.legend-item').forEach(item => {
   });
 });
 
-let overviewMode = false;
-document.getElementById('btn-toggle-zoom').addEventListener('click', () => {
-  overviewMode = !overviewMode;
-  document.getElementById('formation').classList.toggle('overview', overviewMode);
-  document.getElementById('btn-toggle-zoom').textContent = overviewMode ? 'Vue détaillée' : "Vue d'ensemble";
-});
+// ------------------------------------------------------------
+// Zoom manuel de la formation (slider, boutons, molette, pincement)
+// ------------------------------------------------------------
+const ZOOM_MIN = 40, ZOOM_MAX = 200, ZOOM_STEP = 5;
+let zoomLevel = 100;
+const zoomSlider = document.getElementById('zoom-slider');
+const zoomValueLabel = document.getElementById('zoom-value');
+const formationViewport = document.getElementById('formation-viewport');
+
+function applyZoom(){
+  const el = document.getElementById('formation');
+  const scale = zoomLevel / 100;
+  el.style.transform = `scale(${scale})`;
+  // La taille naturelle (offsetWidth/Height) n'est pas affectée par transform :
+  // on l'utilise pour redimensionner le conteneur et éviter tout vide ou rognage.
+  formationViewport.style.width = (el.offsetWidth * scale) + 'px';
+  formationViewport.style.height = (el.offsetHeight * scale) + 'px';
+  zoomSlider.value = zoomLevel;
+  zoomValueLabel.textContent = Math.round(zoomLevel) + '%';
+}
+
+function setZoom(newLevel){
+  zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newLevel));
+  applyZoom();
+}
+
+zoomSlider.addEventListener('input', () => setZoom(Number(zoomSlider.value)));
+document.getElementById('zoom-in-btn').addEventListener('click', () => setZoom(zoomLevel + ZOOM_STEP));
+document.getElementById('zoom-out-btn').addEventListener('click', () => setZoom(zoomLevel - ZOOM_STEP));
+
+// Molette souris (Ctrl/Cmd + molette, pour ne pas gêner le défilement normal de la page)
+formationViewport.addEventListener('wheel', (e) => {
+  if(!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  setZoom(zoomLevel + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+}, { passive:false });
+
+// Pincement tactile (deux doigts)
+let pinchStartDist = null, pinchStartZoom = 100;
+function touchDist(t1, t2){
+  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+formationViewport.addEventListener('touchstart', (e) => {
+  if(e.touches.length === 2){
+    pinchStartDist = touchDist(e.touches[0], e.touches[1]);
+    pinchStartZoom = zoomLevel;
+  }
+}, { passive:true });
+formationViewport.addEventListener('touchmove', (e) => {
+  if(e.touches.length === 2 && pinchStartDist){
+    e.preventDefault();
+    const newDist = touchDist(e.touches[0], e.touches[1]);
+    setZoom(pinchStartZoom * (newDist / pinchStartDist));
+  }
+}, { passive:false });
+formationViewport.addEventListener('touchend', () => { pinchStartDist = null; });
 
 document.getElementById('gate-submit').addEventListener('click', tryNameEntry);
 document.getElementById('gate-name').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryNameEntry(); });
