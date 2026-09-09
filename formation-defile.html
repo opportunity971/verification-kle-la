@@ -65,6 +65,12 @@
   .stat-row .num{ font-weight:800; color:var(--jaune); font-family:'Baloo 2',sans-serif; font-size:1.2rem; }
   .stat-row .label{ font-size:0.78rem; color:var(--slate); }
 
+  .instrument-stats{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+  .instrument-stat-row{ display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; color:var(--creme); }
+  .instrument-stat-left{ display:flex; align-items:center; gap:8px; }
+  .instrument-stat-row .dot{ display:inline-block; width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .instrument-stat-row .num-small{ font-weight:700; color:var(--jaune); font-family:'Baloo 2',sans-serif; }
+
   .legend{ display:flex; flex-direction:column; gap:9px; }
   .legend-item{ display:flex; align-items:center; gap:10px; font-size:0.82rem; color: var(--creme); cursor:pointer; }
   .legend-item.dim{ opacity:0.3; }
@@ -149,6 +155,15 @@
 
   .front-line{ text-align:center; font-size:0.72rem; color: var(--jaune); letter-spacing: 0.06em; font-weight:700; padding-bottom:8px; border-bottom: 3px dashed rgba(255,201,60,0.3); margin-bottom:4px; }
 
+  /* Vue d'ensemble : formation compacte pour voir tout l'orchestre d'un coup */
+  .formation.overview{ gap:2px; max-width:300px; min-width:220px; }
+  .formation.overview .row{ gap:2px; }
+  .formation.overview .row-num{ font-size:0.5rem; }
+  .formation.overview .row-label-line{ display:none; }
+  .formation.overview .pos .initials,
+  .formation.overview .pos .instr-label{ display:none; }
+  .formation.overview .front-line{ font-size:0.6rem; padding-bottom:4px; margin-bottom:2px; }
+
   .banner{ font-size:0.78rem; padding:11px 13px; border-radius:12px; background: rgba(255,201,60,0.1); border:2px solid rgba(255,201,60,0.3); color: var(--jaune); line-height:1.5; }
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
@@ -230,6 +245,7 @@
     <div id="stats-block" style="display:none;">
       <div class="stat-row"><span><span class="num" id="stat-filled">0</span> <span class="label">/ 200 réservées</span></span></div>
       <div class="stat-row"><span><span class="num" id="stat-blocked">0</span> <span class="label">bloquées</span></span></div>
+      <div id="instrument-stats" class="instrument-stats"></div>
     </div>
 
     <div id="legend-block" style="display:none;">
@@ -291,7 +307,10 @@
   <div class="main">
     <div class="main-header">
       <h2>Formation — vue de dessus</h2>
-      <div class="direction-hint">▲ Tête du défilé en haut</div>
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <button class="link-btn" id="btn-toggle-zoom">Vue d'ensemble</button>
+        <div class="direction-hint">▲ Tête du défilé en haut</div>
+      </div>
     </div>
     <div class="formation" id="formation">
       <div class="front-line">TÊTE DU CORTÈGE</div>
@@ -451,6 +470,18 @@ function updateStats(){
   const blocked = Object.values(grid).filter(d => d.blocked).length;
   document.getElementById('stat-filled').textContent = filled;
   document.getElementById('stat-blocked').textContent = blocked;
+
+  const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0 };
+  Object.values(grid).forEach(d => {
+    if(d.name && d.instrument && counts.hasOwnProperty(d.instrument)) counts[d.instrument]++;
+  });
+  const box = document.getElementById('instrument-stats');
+  box.innerHTML = Object.keys(counts).map(k => `
+    <div class="instrument-stat-row">
+      <span class="instrument-stat-left"><span class="dot" style="background:var(${sectionColorVar[k]})"></span>${sectionLabel[k]}</span>
+      <span class="num-small">${counts[k]}</span>
+    </div>
+  `).join('');
 }
 
 function showToast(msg){
@@ -869,6 +900,13 @@ document.querySelectorAll('.legend-item').forEach(item => {
     }
     refreshAll();
   });
+});
+
+let overviewMode = false;
+document.getElementById('btn-toggle-zoom').addEventListener('click', () => {
+  overviewMode = !overviewMode;
+  document.getElementById('formation').classList.toggle('overview', overviewMode);
+  document.getElementById('btn-toggle-zoom').textContent = overviewMode ? 'Vue détaillée' : "Vue d'ensemble";
 });
 
 document.getElementById('gate-submit').addEventListener('click', tryNameEntry);
