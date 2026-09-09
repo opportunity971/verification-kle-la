@@ -293,6 +293,17 @@
       <button class="btn btn-save" id="rowlabel-save-btn">Appliquer à toute la rangée</button>
     </div>
 
+    <div id="rowmanage-block" style="display:none;">
+      <p class="panel-title">GESTION DES RANGÉES</p>
+      <label for="insert-row-select">Insérer une nouvelle rangée avant :</label>
+      <select id="insert-row-select"></select>
+      <button class="btn btn-save" id="insert-row-btn">Insérer ici</button>
+      <label for="remove-row-select" style="margin-top:14px;">Supprimer la rangée :</label>
+      <select id="remove-row-select"></select>
+      <button class="btn btn-clear" id="remove-row-btn">Supprimer cette rangée</button>
+      <p class="empty-msg" style="margin-top:10px;">La numérotation des rangées suivantes se met à jour automatiquement. Supprimer une rangée efface définitivement ses 5 places.</p>
+    </div>
+
     <div id="reset-block" style="display:none;">
       <p class="panel-title">ZONE SENSIBLE</p>
       <button class="btn btn-clear" id="reset-open-btn">Réinitialiser toutes les places</button>
@@ -321,7 +332,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const ROWS = 40, COLS = 5;
+const COLS = 5;
+let ROWS = 40; // valeur par défaut, écrasée dès le premier chargement par la valeur réelle du Google Sheet
 const API_URL = 'https://script.google.com/macros/s/AKfycbxPsziKBTl1xVIVGtFb5rbBY0HBHu0M4WVd-6oelWNGo6RdJ-BYVRiVNG0F1NQskRwW/exec';
 
 let grid = {};
@@ -370,6 +382,7 @@ async function loadAllData(){
     grid = data.grid || emptyGrid();
     roster = data.roster || [];
     rowLabels = data.labels || {};
+    if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
     return true;
   } catch(err){
     grid = emptyGrid();
@@ -563,14 +576,15 @@ document.getElementById('roster-bulk-btn').addEventListener('click', async () =>
 // ------------------------------------------------------------
 function populateRowLabelSelect(){
   const select = document.getElementById('rowlabel-select');
-  if(select.options.length === 0){
-    for(let r=1; r<=ROWS; r++){
-      const opt = document.createElement('option');
-      opt.value = r;
-      opt.textContent = `Rangée ${r}`;
-      select.appendChild(opt);
-    }
+  const prevValue = select.value;
+  select.innerHTML = '';
+  for(let r=1; r<=ROWS; r++){
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = `Rangée ${r}`;
+    select.appendChild(opt);
   }
+  if(prevValue && Number(prevValue) <= ROWS) select.value = prevValue;
   syncRowLabelInput();
 }
 
@@ -617,6 +631,72 @@ function renderAllRowLabels(){
 }
 
 // ------------------------------------------------------------
+// Insertion / suppression de rangées
+// ------------------------------------------------------------
+function populateRowManageSelects(){
+  const insertSelect = document.getElementById('insert-row-select');
+  const removeSelect = document.getElementById('remove-row-select');
+
+  insertSelect.innerHTML = '';
+  for(let r=1; r<=ROWS; r++){
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = `Rangée ${r}`;
+    insertSelect.appendChild(opt);
+  }
+  const optEnd = document.createElement('option');
+  optEnd.value = ROWS + 1;
+  optEnd.textContent = 'À la fin (après la dernière rangée)';
+  insertSelect.appendChild(optEnd);
+
+  removeSelect.innerHTML = '';
+  for(let r=1; r<=ROWS; r++){
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = `Rangée ${r}`;
+    removeSelect.appendChild(opt);
+  }
+}
+
+async function reloadAfterRowStructureChange(){
+  selected = null;
+  await loadAllData();
+  buildGridDOM();
+  refreshAll();
+  renderAllRowLabels();
+  populateRowLabelSelect();
+  populateRowManageSelects();
+  document.getElementById('detail-panel').innerHTML = '<p class="empty-msg">Sélectionne une place dans la grille.</p>';
+}
+
+document.getElementById('insert-row-btn').addEventListener('click', async () => {
+  const at = Number(document.getElementById('insert-row-select').value);
+  try {
+    const result = await apiPost({ action:'insertRow', at, password: organizerPassword });
+    if(result.ok){
+      await reloadAfterRowStructureChange();
+      showToast(`Nouvelle rangée insérée en position ${at}.`);
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+document.getElementById('remove-row-btn').addEventListener('click', async () => {
+  const at = Number(document.getElementById('remove-row-select').value);
+  if(!confirm(`Supprimer définitivement la rangée ${at} et ses 5 places ? Les rangées suivantes seront renumérotées.`)) return;
+  try {
+    const result = await apiPost({ action:'removeRow', at, password: organizerPassword });
+    if(result.ok){
+      await reloadAfterRowStructureChange();
+      showToast(`Rangée ${at} supprimée.`);
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+// ------------------------------------------------------------
 // Réinitialisation totale
 // ------------------------------------------------------------
 document.getElementById('reset-open-btn').addEventListener('click', () => {
@@ -630,11 +710,7 @@ document.getElementById('reset-confirm-btn').addEventListener('click', async () 
     const result = await apiPost({ action:'resetGrid', password: organizerPassword });
     document.getElementById('reset-confirm').style.display = 'none';
     if(result.ok){
-      selected = null;
-      await loadAllData();
-      refreshAll();
-      renderAllRowLabels();
-      document.getElementById('detail-panel').innerHTML = '<p class="empty-msg">Sélectionne une place dans la grille.</p>';
+      await reloadAfterRowStructureChange();
       showToast('Toutes les places et étiquettes ont été réinitialisées.');
     } else {
       showToast(result.error || "Erreur d'enregistrement.");
@@ -647,11 +723,17 @@ document.getElementById('reset-confirm-btn').addEventListener('click', async () 
 // ------------------------------------------------------------
 async function loadGrid(){
   await loadAllData();
+  buildGridDOM();
   document.getElementById('loading-msg').style.display = 'none';
   document.getElementById('stats-block').style.display = 'block';
   document.getElementById('legend-block').style.display = 'block';
   document.getElementById('detail-block').style.display = 'block';
   refreshAll();
+  renderAllRowLabels();
+  if(isOrganizer){
+    populateRowLabelSelect();
+    populateRowManageSelects();
+  }
 }
 
 function selectPos(r,c){
@@ -878,6 +960,8 @@ async function submitOrgaInline(){
       document.getElementById('reset-block').style.display = 'block';
       populateRowLabelSelect();
       renderAllRowLabels();
+      populateRowManageSelects();
+      document.getElementById('rowmanage-block').style.display = 'block';
       showToast('Mode organisateur activé.');
     } else {
       document.getElementById('orga-inline-error').textContent = 'Mot de passe incorrect.';
@@ -970,6 +1054,7 @@ function openApp(asOrganizer){
     renderRoster();
     document.getElementById('rowlabel-block').style.display = 'block';
     document.getElementById('reset-block').style.display = 'block';
+    document.getElementById('rowmanage-block').style.display = 'block';
     populateRowLabelSelect();
   } else {
     document.getElementById('main-layout').classList.remove('organizer-view');
@@ -979,10 +1064,9 @@ function openApp(asOrganizer){
     document.getElementById('roster-block').style.display = 'none';
     document.getElementById('rowlabel-block').style.display = 'none';
     document.getElementById('reset-block').style.display = 'none';
+    document.getElementById('rowmanage-block').style.display = 'none';
   }
-  buildGridDOM();
   loadGrid();
-  renderAllRowLabels();
 }
 </script>
 
