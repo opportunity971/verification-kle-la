@@ -14,6 +14,8 @@
     --vert: #1DBE79;
     --bleu: #2196D8;
     --violet: #8B4FD1;
+    --orange: #FF8C3D;
+    --rose: #FF4FA3;
     --creme: #FFF6E5;
     --slate: #9C8FC2;
     --unset: #5C5548;
@@ -140,6 +142,8 @@
   .pos.chan{ color: var(--rouge); }
   .pos.konk{ color: var(--jaune); }
   .pos.chacha{ color: var(--vert); }
+  .pos.siyak{ color: var(--orange); }
+  .pos.clave{ color: var(--rose); }
   /* Place réservée : couleur d'instrument conservée mais bien grisée */
   .pos.taken svg{ filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)) grayscale(0.25) saturate(0.65) brightness(0.78); }
   .pos.taken:hover svg{ filter: drop-shadow(0 0 5px rgba(255,201,60,0.6)) grayscale(0.25) saturate(0.65) brightness(0.78); }
@@ -257,6 +261,8 @@
         <div class="legend-item" data-filter="chan"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--rouge)"/><circle cx="20" cy="13" r="7.5" fill="var(--rouge)"/></svg></span>Tambours chan</div>
         <div class="legend-item" data-filter="konk"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--jaune)"/><circle cx="20" cy="13" r="7.5" fill="var(--jaune)"/></svg></span>Konk</div>
         <div class="legend-item" data-filter="chacha"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--vert)"/><circle cx="20" cy="13" r="7.5" fill="var(--vert)"/></svg></span>Chacha</div>
+        <div class="legend-item" data-filter="siyak"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--orange)"/><circle cx="20" cy="13" r="7.5" fill="var(--orange)"/></svg></span>Siyak</div>
+        <div class="legend-item" data-filter="clave"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--rose)"/><circle cx="20" cy="13" r="7.5" fill="var(--rose)"/></svg></span>Clave</div>
       </div>
     </div>
 
@@ -289,6 +295,8 @@
         <option value="chan">Tambours chan</option>
         <option value="konk">Konk</option>
         <option value="chacha">Chacha</option>
+        <option value="siyak">Siyak</option>
+        <option value="clave">Clave</option>
       </select>
       <button class="btn btn-save" id="rowlabel-save-btn">Appliquer à toute la rangée</button>
     </div>
@@ -345,9 +353,9 @@ let currentUserName = '';
 let organizerPassword = '';
 let activeFilter = '';
 
-const sectionLabel = { basse: 'Basse', contrebasse: 'Contrebasse', chan: 'Tambours chan', konk: 'Konk', chacha: 'Chacha' };
-const sectionAbbrev = { basse: 'BA', contrebasse: 'CB', chan: 'TC', konk: 'KO', chacha: 'CC' };
-const sectionColorVar = { basse: '--bleu', contrebasse: '--violet', chan: '--rouge', konk: '--jaune', chacha: '--vert' };
+const sectionLabel = { basse: 'Basse', contrebasse: 'Contrebasse', chan: 'Tambours chan', konk: 'Konk', chacha: 'Chacha', siyak: 'Siyak', clave: 'Clave' };
+const sectionAbbrev = { basse: 'BA', contrebasse: 'CB', chan: 'TC', konk: 'KO', chacha: 'CC', siyak: 'SY', clave: 'CL' };
+const sectionColorVar = { basse: '--bleu', contrebasse: '--violet', chan: '--rouge', konk: '--jaune', chacha: '--vert', siyak: '--orange', clave: '--rose' };
 function keyOf(r,c){ return r + '-' + c; }
 
 // Silhouette humaine stylisée, vue de dessus (épaules arrondies + tête)
@@ -486,7 +494,7 @@ function updateStats(){
   document.getElementById('stat-total').textContent = ROWS * COLS;
   document.getElementById('intro-sub').textContent = `${ROWS * COLS} places · ${ROWS} rangées de 5. Clique une place libre de ton instrument pour réserver.`;
 
-  const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0 };
+  const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0, siyak:0, clave:0 };
   Object.values(grid).forEach(d => {
     if(d.name && d.instrument && counts.hasOwnProperty(d.instrument)) counts[d.instrument]++;
   });
@@ -776,6 +784,8 @@ function renderDetail(r,c){
         <option value="chan" ${data.instrument==='chan'?'selected':''}>Tambours chan</option>
         <option value="konk" ${data.instrument==='konk'?'selected':''}>Konk</option>
         <option value="chacha" ${data.instrument==='chacha'?'selected':''}>Chacha</option>
+        <option value="siyak" ${data.instrument==='siyak'?'selected':''}>Siyak</option>
+        <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
       </select>
       <label for="inp-name">Nom du musicien (optionnel)</label>
       <input type="text" id="inp-name" value="${data.name || ''}" placeholder="Ex. Jean Baptiste">
@@ -856,6 +866,8 @@ function renderDetail(r,c){
       <option value="chan">Tambours chan</option>
       <option value="konk">Konk</option>
       <option value="chacha">Chacha</option>
+      <option value="siyak">Siyak</option>
+      <option value="clave">Clave</option>
     </select>`;
   panel.innerHTML = `
     <p class="pos-title">Rangée ${r}, position ${c}</p>
