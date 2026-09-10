@@ -204,6 +204,8 @@
     color: var(--creme); padding:6px 8px; border-radius:8px; font-family:inherit; font-size:0.8rem;
   }
   .seat-popup .seat-popup-btn{ width:100%; margin-top:2px; padding:8px; font-size:0.82rem; }
+  .seat-popup.seat-popup-wide{ max-width:260px; }
+  .seat-popup input[type="text"].seat-popup-select{ text-align:center; }
   .seat-popup::after{
     content:''; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%);
     border-width:8px 8px 0 8px; border-style:solid; border-color: var(--jaune) transparent transparent transparent;
@@ -885,14 +887,12 @@ function selectPos(r,c){
 function showSeatPopup(r,c){
   const data = grid[keyOf(r,c)] || { instrument:'', name:'', blocked:false, removed:false };
 
-  if(data.removed){ hideSeatPopup(); return; }
-
   if(isOrganizer){
-    // Vue organisateur : bulle d'info seule (édition complète dans la barre latérale).
-    if(!data.name || data.blocked){ hideSeatPopup(); return; }
-    renderInfoPopup(r, c, data);
+    renderOrganizerPopup(r, c, data);
     return;
   }
+
+  if(data.removed){ hideSeatPopup(); return; }
 
   if(data.blocked){
     renderMessagePopup(r, c, "🔒 Cette place est réservée par l'organisation.");
@@ -929,6 +929,7 @@ function positionSeatPopup(r,c){
 
 function renderInfoPopup(r, c, data){
   const popup = document.getElementById('seat-popup');
+  popup.classList.remove('seat-popup-wide');
   const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
   const photoUrl = photoUrlFor(data.name);
   const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
@@ -940,14 +941,86 @@ function renderInfoPopup(r, c, data){
   positionSeatPopup(r,c);
 }
 
+// Bulle organisateur : reprend tous les contrôles de la barre latérale
+// (instrument, nom, blocage, suppression, réinitialisation) directement
+// au clic sur une place, plutôt que d'obliger à descendre dans le panneau.
+function renderOrganizerPopup(r, c, data){
+  const popup = document.getElementById('seat-popup');
+  popup.classList.add('seat-popup-wide');
+
+  if(data.removed){
+    popup.innerHTML = `
+      <p class="seat-popup-instr">Silhouette supprimée</p>
+      <button class="btn btn-save seat-popup-btn" id="popup-restore-btn">Restaurer cette place</button>
+    `;
+    positionSeatPopup(r,c);
+    document.getElementById('popup-restore-btn').addEventListener('click', async () => {
+      await setCellRemote(r, c, '', '', false, false);
+      showToast('Place restaurée.');
+      renderDetail(r,c);
+      showSeatPopup(r,c);
+    });
+    return;
+  }
+
+  popup.innerHTML = `
+    ${data.blocked ? '<p class="seat-popup-instr">🔒 Place actuellement bloquée</p>' : ''}
+    <select id="popup-orga-instr" class="seat-popup-select">
+      <option value="">— Non attribué —</option>
+      <option value="basse" ${data.instrument==='basse'?'selected':''}>Basse</option>
+      <option value="contrebasse" ${data.instrument==='contrebasse'?'selected':''}>Contrebasse</option>
+      <option value="chan" ${data.instrument==='chan'?'selected':''}>Tambours chan</option>
+      <option value="konk" ${data.instrument==='konk'?'selected':''}>Konk</option>
+      <option value="chacha" ${data.instrument==='chacha'?'selected':''}>Chacha</option>
+      <option value="siyak" ${data.instrument==='siyak'?'selected':''}>Siyak</option>
+      <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
+    </select>
+    <input type="text" id="popup-orga-name" class="seat-popup-select" value="${data.name || ''}" placeholder="Nom du musicien">
+    <button class="btn btn-save seat-popup-btn" id="popup-orga-save-btn">Enregistrer</button>
+    <button class="btn btn-secondary seat-popup-btn" id="popup-orga-block-btn">${data.blocked ? 'Débloquer' : 'Bloquer'}</button>
+    <button class="btn btn-secondary seat-popup-btn" id="popup-orga-remove-btn">Supprimer silhouette</button>
+    <button class="btn btn-clear seat-popup-btn" id="popup-orga-clear-btn">Réinitialiser</button>
+  `;
+  positionSeatPopup(r,c);
+
+  document.getElementById('popup-orga-save-btn').addEventListener('click', async () => {
+    const instrument = document.getElementById('popup-orga-instr').value;
+    const name = document.getElementById('popup-orga-name').value.trim();
+    await setCellRemote(r, c, instrument, name, !!data.blocked, false);
+    showToast('Place mise à jour.');
+    renderDetail(r,c);
+    showSeatPopup(r,c);
+  });
+  document.getElementById('popup-orga-block-btn').addEventListener('click', async () => {
+    await setCellRemote(r, c, data.instrument, data.name, !data.blocked, false);
+    showToast(data.blocked ? 'Place débloquée.' : 'Place bloquée.');
+    renderDetail(r,c);
+    showSeatPopup(r,c);
+  });
+  document.getElementById('popup-orga-remove-btn').addEventListener('click', async () => {
+    await setCellRemote(r, c, '', '', false, true);
+    showToast('Silhouette supprimée.');
+    renderDetail(r,c);
+    showSeatPopup(r,c);
+  });
+  document.getElementById('popup-orga-clear-btn').addEventListener('click', async () => {
+    await setCellRemote(r, c, '', '', false, false);
+    showToast('Place réinitialisée.');
+    renderDetail(r,c);
+    showSeatPopup(r,c);
+  });
+}
+
 function renderMessagePopup(r, c, message){
   const popup = document.getElementById('seat-popup');
+  popup.classList.remove('seat-popup-wide');
   popup.innerHTML = `<p class="seat-popup-instr">${message}</p>`;
   positionSeatPopup(r,c);
 }
 
 function renderReleasePopup(r, c, data){
   const popup = document.getElementById('seat-popup');
+  popup.classList.remove('seat-popup-wide');
   const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
   const photoUrl = photoUrlFor(data.name);
   const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
@@ -976,6 +1049,7 @@ function renderReleasePopup(r, c, data){
 
 function renderReservePopup(r, c, data){
   const popup = document.getElementById('seat-popup');
+  popup.classList.remove('seat-popup-wide');
   const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Place libre';
   const isRowLocked = !!data.instrument;
   const instrSelectHtml = isRowLocked ? '' : `
