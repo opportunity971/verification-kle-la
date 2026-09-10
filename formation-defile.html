@@ -183,6 +183,26 @@
   .zoom-value{ font-size:0.72rem; color: var(--slate); min-width:34px; text-align:right; font-variant-numeric: tabular-nums; }
 
   .banner{ font-size:0.78rem; padding:11px 13px; border-radius:12px; background: rgba(255,201,60,0.1); border:2px solid rgba(255,201,60,0.3); color: var(--jaune); line-height:1.5; }
+
+  .seat-popup{
+    position: fixed; z-index: 60; background: var(--panel); border:2px solid var(--jaune);
+    border-radius:12px; padding:10px 14px; font-size:0.82rem; color:var(--creme);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45); pointer-events:none; max-width:220px;
+    transform: translate(-50%, -100%); margin-top:-12px;
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px;
+  }
+  .seat-popup .seat-popup-photo{
+    width:56px; height:56px; border-radius:50%; overflow:hidden;
+    border:2px solid var(--jaune); box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    background: var(--nuit-deep); flex-shrink:0;
+  }
+  .seat-popup .seat-popup-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .seat-popup .seat-popup-name{ font-weight:700; font-family:'Baloo 2',sans-serif; font-size:0.92rem; color: var(--jaune); margin:0; }
+  .seat-popup .seat-popup-instr{ color: var(--slate); margin:0; }
+  .seat-popup::after{
+    content:''; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%);
+    border-width:8px 8px 0 8px; border-style:solid; border-color: var(--jaune) transparent transparent transparent;
+  }
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
     background: linear-gradient(90deg, var(--rouge), var(--violet)); color:var(--creme); padding:11px 20px;
@@ -359,6 +379,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="seat-popup" id="seat-popup" style="display:none;"></div>
 
 <script>
 const COLS = 5;
@@ -807,7 +828,53 @@ function selectPos(r,c){
   selected = {r,c};
   refreshAll();
   renderDetail(r,c);
+  showSeatPopup(r,c);
 }
+
+// ------------------------------------------------------------
+// Bulle d'info au clic sur une place réservée (nom + instrument)
+// ------------------------------------------------------------
+function showSeatPopup(r,c){
+  const popup = document.getElementById('seat-popup');
+  const data = grid[keyOf(r,c)] || { instrument:'', name:'', blocked:false, removed:false };
+
+  // La bulle n'a de sens que pour une place réservée (nom présent) et non bloquée/supprimée.
+  if(!data.name || data.blocked || data.removed){
+    hideSeatPopup();
+    return;
+  }
+
+  const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
+  const photoUrl = photoUrlFor(data.name);
+  const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
+  popup.innerHTML = `
+    ${photoHtml}
+    <p class="seat-popup-name">${data.name}</p>
+    <p class="seat-popup-instr">${instrDisplay}</p>
+  `;
+
+  const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
+  if(!el) return;
+  const rect = el.getBoundingClientRect();
+  popup.style.left = (rect.left + rect.width / 2) + 'px';
+  popup.style.top = rect.top + 'px';
+  popup.style.display = 'flex';
+}
+
+function hideSeatPopup(){
+  document.getElementById('seat-popup').style.display = 'none';
+}
+
+// Fermeture de la bulle si on clique ailleurs que sur une place
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.pos')){
+    hideSeatPopup();
+  }
+});
+
+// Repositionner/masquer la bulle si la vue défile ou se redimensionne
+window.addEventListener('scroll', hideSeatPopup, true);
+window.addEventListener('resize', hideSeatPopup);
 
 // ------------------------------------------------------------
 // Détail d'une place
@@ -1080,6 +1147,7 @@ function applyZoom(){
 function setZoom(newLevel){
   zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newLevel));
   applyZoom();
+  hideSeatPopup();
 }
 
 zoomSlider.addEventListener('input', () => setZoom(Number(zoomSlider.value)));
