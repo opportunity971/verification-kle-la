@@ -207,7 +207,7 @@
   .seat-popup.seat-popup-wide{ max-width:260px; }
   .seat-popup input[type="text"].seat-popup-select{ text-align:center; }
   .seat-popup::after{
-    content:''; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%);
+    content:''; position:absolute; left: calc(50% + var(--popup-arrow-offset, 0px)); bottom:-8px; transform:translateX(-50%);
     border-width:8px 8px 0 8px; border-style:solid; border-color: var(--jaune) transparent transparent transparent;
   }
   .seat-popup.popup-flip-below::after{
@@ -966,14 +966,22 @@ function positionSeatPopup(r,c){
     top = rect.top - 12;
   }
 
-  let left = rect.left + rect.width / 2;
+  const desiredCenter = rect.left + rect.width / 2;
   const halfWidth = popupRect.width / 2;
-  left = Math.min(window.innerWidth - margin - halfWidth, Math.max(margin + halfWidth, left));
+  let left = Math.min(window.innerWidth - margin - halfWidth, Math.max(margin + halfWidth, desiredCenter));
 
   popup.style.left = left + 'px';
   popup.style.top = top + 'px';
   popup.style.transform = flipBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)';
   popup.classList.toggle('popup-flip-below', flipBelow);
+
+  // Si la bulle a dû être décalée pour rester à l'écran (proche du bord
+  // droit ou gauche), la petite flèche suit ce décalage pour continuer
+  // à pointer vers la place réelle, plutôt que de rester figée au centre.
+  const maxArrowOffset = Math.max(0, halfWidth - 14);
+  let arrowOffset = desiredCenter - left;
+  arrowOffset = Math.min(maxArrowOffset, Math.max(-maxArrowOffset, arrowOffset));
+  popup.style.setProperty('--popup-arrow-offset', arrowOffset + 'px');
 }
 
 function renderInfoPopup(r, c, data){
