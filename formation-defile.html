@@ -253,6 +253,7 @@
     <div id="gate-name-mode">
       <p>Entre ton nom complet et ton code personnel pour accéder au plan.</p>
       <input type="text" id="gate-name" placeholder="Ton nom complet" autocomplete="off">
+      <datalist id="roster-datalist"></datalist>
       <input type="text" id="gate-code" placeholder="Ton code (4 chiffres)" autocomplete="off" inputmode="numeric" maxlength="4" style="margin-top:8px;">
       <button class="btn btn-save" id="gate-submit">Entrer</button>
       <p class="gate-error" id="gate-error"></p>
@@ -605,6 +606,9 @@ function showToast(msg){
 // Musiciens autorisés (roster)
 // ------------------------------------------------------------
 function renderRoster(){
+  const datalist = document.getElementById('roster-datalist');
+  if(datalist) datalist.innerHTML = roster.map(n => `<option value="${n}"></option>`).join('');
+
   const list = document.getElementById('roster-list');
   if(roster.length === 0){
     list.innerHTML = '<p class="empty-msg">Aucun musicien ajouté pour l\'instant.</p>';
@@ -975,7 +979,7 @@ function renderOrganizerPopup(r, c, data){
       <option value="siyak" ${data.instrument==='siyak'?'selected':''}>Siyak</option>
       <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
     </select>
-    <input type="text" id="popup-orga-name" class="seat-popup-select" value="${data.name || ''}" placeholder="Nom du musicien">
+    <input type="text" id="popup-orga-name" class="seat-popup-select" value="${data.name || ''}" placeholder="Nom du musicien" list="roster-datalist">
     <button class="btn btn-save seat-popup-btn" id="popup-orga-save-btn">Enregistrer</button>
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-block-btn">${data.blocked ? 'Débloquer' : 'Bloquer'}</button>
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-remove-btn">Supprimer silhouette</button>
@@ -1156,7 +1160,7 @@ function renderDetail(r,c){
         <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
       </select>
       <label for="inp-name">Nom du musicien (optionnel)</label>
-      <input type="text" id="inp-name" value="${data.name || ''}" placeholder="Ex. Jean Baptiste">
+      <input type="text" id="inp-name" value="${data.name || ''}" placeholder="Ex. Jean Baptiste" list="roster-datalist">
       <button class="btn btn-save" id="btn-save">Enregistrer</button>
       <button class="btn btn-secondary" id="btn-toggle-block">${data.blocked ? 'Débloquer cette place' : 'Bloquer cette place (non réservable)'}</button>
       <button class="btn btn-secondary" id="btn-remove">Supprimer cette silhouette</button>
@@ -1509,6 +1513,25 @@ function openApp(asOrganizer){
   }
   loadGrid();
 }
+
+// ------------------------------------------------------------
+// Pré-chargement de la liste des noms pour alimenter la datalist
+// d'autocomplétion utilisée par l'organisateur (champ nom dans la
+// barre latérale et dans la bulle), dès l'arrivée sur la page.
+// ------------------------------------------------------------
+async function preloadRosterDatalist(){
+  try {
+    await loadAllData(); // remplit la variable "roster" (noms uniquement, pas les codes)
+    const datalist = document.getElementById('roster-datalist');
+    if(datalist){
+      datalist.innerHTML = roster.map(n => `<option value="${n}"></option>`).join('');
+    }
+  } catch(err){
+    // Pas grave : les champs restent utilisables sans autocomplétion si ça échoue.
+  }
+}
+preloadRosterDatalist();
+
 </script>
 
 </body>
