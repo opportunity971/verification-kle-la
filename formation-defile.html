@@ -246,6 +246,13 @@
   #access-gate .gate-error{ color:#FF9B94; font-size:0.8rem; margin-top:8px; min-height:1.1em; }
   #access-gate .switch-link{ margin-top:14px; }
 
+  .autocomplete-dropdown{
+    position: fixed; z-index: 70; background: var(--panel); border:2px solid var(--jaune);
+    border-radius:10px; max-height:180px; overflow-y:auto; box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  }
+  .autocomplete-item{ padding:8px 10px; font-size:0.85rem; color:var(--creme); cursor:pointer; text-align:left; }
+  .autocomplete-item:hover, .autocomplete-item.active{ background: rgba(255,201,60,0.18); }
+
   .roster-list{ display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto; }
   .roster-row{ display:flex; align-items:center; justify-content:space-between; background: rgba(255,246,229,0.05); border-radius:8px; padding:6px 10px; font-size:0.82rem; }
   .roster-row button{ background:none; border:none; color:#FF9B94; cursor:pointer; font-size:0.9rem; padding:0 4px; }
@@ -263,6 +270,10 @@
       <p>Entre ton nom complet et ton code personnel pour accéder au plan.</p>
       <input type="text" id="gate-name" placeholder="Ton nom complet" autocomplete="off">
       <datalist id="roster-datalist"></datalist>
+      <!-- L'autocomplétion réelle est désormais assurée par la liste déroulante
+           maison ci-dessous (voir attachNameAutocomplete), le datalist natif
+           ci-dessus étant conservé vide mais non utilisé : le support de
+           <datalist> est trop inégal sur Android Chrome (souvent invisible). -->
       <input type="text" id="gate-code" placeholder="Ton code (4 chiffres)" autocomplete="off" inputmode="numeric" maxlength="4" style="margin-top:8px;">
       <button class="btn btn-save" id="gate-submit">Entrer</button>
       <p class="gate-error" id="gate-error"></p>
@@ -329,7 +340,7 @@
       <p class="panel-title">MUSICIENS AUTORISÉS</p>
       <div class="roster-list" id="roster-list"></div>
       <div class="add-row">
-        <input type="text" id="roster-add-input" placeholder="Nom complet">
+        <input type="text" id="roster-add-input" placeholder="Nom complet" autocomplete="off">
         <input type="text" id="roster-add-code" placeholder="Code (4 chiffres)" inputmode="numeric" maxlength="4" style="max-width:120px;">
         <button class="btn btn-secondary" id="roster-suggest-code-btn" style="width:auto; margin-top:0; padding:9px 12px; white-space:nowrap;" title="Suggérer un code libre">🎲</button>
         <button class="btn btn-save" id="roster-add-btn">Ajouter</button>
@@ -1081,7 +1092,7 @@ function renderOrganizerPopup(r, c, data){
       <option value="siyak" ${data.instrument==='siyak'?'selected':''}>Siyak</option>
       <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
     </select>
-    <input type="text" id="popup-orga-name" class="seat-popup-select" value="${data.name || ''}" placeholder="Nom du musicien" list="roster-datalist">
+    <input type="text" id="popup-orga-name" class="seat-popup-select" value="${data.name || ''}" placeholder="Nom du musicien" autocomplete="off">
     <button class="btn btn-save seat-popup-btn" id="popup-orga-save-btn">Enregistrer</button>
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-block-btn">${data.blocked ? 'Débloquer' : 'Bloquer'}</button>
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-remove-btn">Supprimer silhouette</button>
@@ -1089,6 +1100,7 @@ function renderOrganizerPopup(r, c, data){
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-collapse-btn">← Vue simple</button>
   `;
   positionSeatPopup(r,c);
+  attachNameAutocomplete(document.getElementById('popup-orga-name'));
 
   document.getElementById('popup-orga-save-btn').addEventListener('click', async () => {
     const instrument = document.getElementById('popup-orga-instr').value;
@@ -1242,7 +1254,7 @@ document.getElementById('seat-popup').addEventListener('focusout', () => {
 function handlePotentialOutsideStart(e){
   const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
   const insidePopupOrPos = path.some(node =>
-    node.classList && (node.classList.contains('pos') || node.classList.contains('seat-popup'))
+    node.classList && (node.classList.contains('pos') || node.classList.contains('seat-popup') || node.classList.contains('autocomplete-dropdown'))
   );
   if(!insidePopupOrPos){
     hideSeatPopup();
@@ -1294,12 +1306,13 @@ function renderDetail(r,c){
         <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
       </select>
       <label for="inp-name">Nom du musicien (optionnel)</label>
-      <input type="text" id="inp-name" value="${data.name || ''}" placeholder="Ex. Jean Baptiste" list="roster-datalist">
+      <input type="text" id="inp-name" value="${data.name || ''}" placeholder="Ex. Jean Baptiste" autocomplete="off">
       <button class="btn btn-save" id="btn-save">Enregistrer</button>
       <button class="btn btn-secondary" id="btn-toggle-block">${data.blocked ? 'Débloquer cette place' : 'Bloquer cette place (non réservable)'}</button>
       <button class="btn btn-secondary" id="btn-remove">Supprimer cette silhouette</button>
       <button class="btn btn-clear" id="btn-clear">Réinitialiser cette place</button>
     `;
+    attachNameAutocomplete(document.getElementById('inp-name'));
     document.getElementById('btn-save').addEventListener('click', async () => {
       const instrument = document.getElementById('inp-instr').value;
       const name = document.getElementById('inp-name').value.trim();
@@ -1655,22 +1668,79 @@ function openApp(asOrganizer){
 }
 
 // ------------------------------------------------------------
-// Pré-chargement de la liste des noms pour alimenter la datalist
-// d'autocomplétion utilisée par l'organisateur (champ nom dans la
-// barre latérale et dans la bulle), dès l'arrivée sur la page.
+// Autocomplétion maison sur les noms (remplace <datalist>, dont le
+// support est trop inégal sur Android Chrome — souvent invisible malgré
+// un champ correctement rempli). Une seule liste déroulante partagée est
+// réutilisée pour n'importe quel champ nom qui l'active via
+// attachNameAutocomplete(champ).
+// ------------------------------------------------------------
+const autoDropdown = document.createElement('div');
+autoDropdown.className = 'autocomplete-dropdown';
+autoDropdown.style.display = 'none';
+document.body.appendChild(autoDropdown);
+let autoDropdownInput = null;
+let autoDropdownMatches = [];
+
+function positionAutoDropdown(){
+  if(!autoDropdownInput) return;
+  const rect = autoDropdownInput.getBoundingClientRect();
+  autoDropdown.style.left = rect.left + 'px';
+  autoDropdown.style.top = rect.bottom + 'px';
+  autoDropdown.style.width = rect.width + 'px';
+}
+
+function hideAutoDropdown(){
+  autoDropdown.style.display = 'none';
+  autoDropdownInput = null;
+  autoDropdownMatches = [];
+}
+
+function showAutoMatches(inputEl){
+  autoDropdownInput = inputEl;
+  const val = normalizeName(inputEl.value);
+  if(!val){ hideAutoDropdown(); return; }
+  autoDropdownMatches = roster.filter(n => normalizeName(n).includes(val)).slice(0, 8);
+  if(autoDropdownMatches.length === 0){ hideAutoDropdown(); return; }
+  autoDropdown.innerHTML = autoDropdownMatches.map(n => `<div class="autocomplete-item">${n}</div>`).join('');
+  positionAutoDropdown();
+  autoDropdown.style.display = 'block';
+  Array.from(autoDropdown.children).forEach((item, i) => {
+    // mousedown (et non click) pour agir avant que le champ ne perde le
+    // focus, ce qui évite que la liste se ferme avant la sélection.
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      inputEl.value = autoDropdownMatches[i];
+      hideAutoDropdown();
+      inputEl.focus();
+    });
+  });
+}
+
+function attachNameAutocomplete(inputEl){
+  if(!inputEl) return;
+  inputEl.addEventListener('input', () => showAutoMatches(inputEl));
+  inputEl.addEventListener('focus', () => showAutoMatches(inputEl));
+  inputEl.addEventListener('blur', () => setTimeout(hideAutoDropdown, 150));
+}
+
+window.addEventListener('scroll', positionAutoDropdown, true);
+window.addEventListener('resize', positionAutoDropdown);
+
+// ------------------------------------------------------------
+// Pré-chargement de la liste des noms pour alimenter l'autocomplétion
+// (roster) et activation sur les deux champs nom permanents de la page
+// (connexion musicien, ajout d'un musicien côté organisateur).
 // ------------------------------------------------------------
 async function preloadRosterDatalist(){
   try {
     await loadAllData(); // remplit la variable "roster" (noms uniquement, pas les codes)
-    const datalist = document.getElementById('roster-datalist');
-    if(datalist){
-      datalist.innerHTML = roster.map(n => `<option value="${n}"></option>`).join('');
-    }
   } catch(err){
     // Pas grave : les champs restent utilisables sans autocomplétion si ça échoue.
   }
 }
 preloadRosterDatalist();
+attachNameAutocomplete(document.getElementById('gate-name'));
+attachNameAutocomplete(document.getElementById('roster-add-input'));
 
 </script>
 
