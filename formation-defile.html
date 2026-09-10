@@ -314,6 +314,7 @@
       <div class="add-row">
         <input type="text" id="roster-add-input" placeholder="Nom complet">
         <input type="text" id="roster-add-code" placeholder="Code (4 chiffres)" inputmode="numeric" maxlength="4" style="max-width:120px;">
+        <button class="btn btn-secondary" id="roster-suggest-code-btn" style="width:auto; margin-top:0; padding:9px 12px; white-space:nowrap;" title="Suggérer un code libre">🎲</button>
         <button class="btn btn-save" id="roster-add-btn">Ajouter</button>
       </div>
       <label for="roster-bulk-input" style="margin-top:14px;">Ajout groupé (une ligne par musicien : Nom;Code)</label>
@@ -621,6 +622,17 @@ function renderRoster(){
     });
   });
 }
+
+document.getElementById('roster-suggest-code-btn').addEventListener('click', async () => {
+  try {
+    const result = await apiPost({ action:'suggestCode', password: organizerPassword });
+    if(result.ok){
+      document.getElementById('roster-add-code').value = result.code;
+    } else {
+      showToast(result.error || "Erreur, réessaie.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
 
 document.getElementById('roster-add-btn').addEventListener('click', async () => {
   const input = document.getElementById('roster-add-input');
