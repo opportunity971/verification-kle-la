@@ -186,8 +186,8 @@
 
   .seat-popup{
     position: fixed; z-index: 60; background: var(--panel); border:2px solid var(--jaune);
-    border-radius:12px; padding:10px 14px; font-size:0.82rem; color:var(--creme);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.45); pointer-events:none; max-width:220px;
+    border-radius:12px; padding:12px 14px; font-size:0.82rem; color:var(--creme);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45); pointer-events:auto; max-width:230px;
     transform: translate(-50%, -100%); margin-top:-12px;
     display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px;
   }
@@ -199,6 +199,11 @@
   .seat-popup .seat-popup-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
   .seat-popup .seat-popup-name{ font-weight:700; font-family:'Baloo 2',sans-serif; font-size:0.92rem; color: var(--jaune); margin:0; }
   .seat-popup .seat-popup-instr{ color: var(--slate); margin:0; }
+  .seat-popup .seat-popup-select{
+    width:100%; background: var(--nuit-deep); border:2px solid rgba(255,246,229,0.15);
+    color: var(--creme); padding:6px 8px; border-radius:8px; font-family:inherit; font-size:0.8rem;
+  }
+  .seat-popup .seat-popup-btn{ width:100%; margin-top:2px; padding:8px; font-size:0.82rem; }
   .seat-popup::after{
     content:''; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%);
     border-width:8px 8px 0 8px; border-style:solid; border-color: var(--jaune) transparent transparent transparent;
@@ -872,25 +877,48 @@ function selectPos(r,c){
 // ------------------------------------------------------------
 // Bulle d'info au clic sur une place réservée (nom + instrument)
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Bulle d'action au clic sur une place : info, réservation ou
+// libération directement depuis la bulle (musicien), info seule
+// pour l'organisateur (qui édite via la barre latérale).
+// ------------------------------------------------------------
 function showSeatPopup(r,c){
-  const popup = document.getElementById('seat-popup');
   const data = grid[keyOf(r,c)] || { instrument:'', name:'', blocked:false, removed:false };
 
-  // La bulle n'a de sens que pour une place réservée (nom présent) et non bloquée/supprimée.
-  if(!data.name || data.blocked || data.removed){
-    hideSeatPopup();
+  if(data.removed){ hideSeatPopup(); return; }
+
+  if(isOrganizer){
+    // Vue organisateur : bulle d'info seule (édition complète dans la barre latérale).
+    if(!data.name || data.blocked){ hideSeatPopup(); return; }
+    renderInfoPopup(r, c, data);
     return;
   }
 
-  const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
-  const photoUrl = photoUrlFor(data.name);
-  const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
-  popup.innerHTML = `
-    ${photoHtml}
-    <p class="seat-popup-name">${data.name}</p>
-    <p class="seat-popup-instr">${instrDisplay}</p>
-  `;
+  if(data.blocked){
+    renderMessagePopup(r, c, "🔒 Cette place est réservée par l'organisation.");
+    return;
+  }
 
+  if(data.name){
+    if(data.name === currentUserName){
+      renderReleasePopup(r, c, data);
+    } else {
+      renderInfoPopup(r, c, data);
+    }
+    return;
+  }
+
+  const existing = findUserPosition();
+  if(existing && (existing.r !== r || existing.c !== c)){
+    renderMessagePopup(r, c, `Tu as déjà réservé une place : rangée ${existing.r}, position ${existing.c}. Libère-la d'abord si tu veux en changer.`);
+    return;
+  }
+
+  renderReservePopup(r, c, data);
+}
+
+function positionSeatPopup(r,c){
+  const popup = document.getElementById('seat-popup');
   const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
   if(!el) return;
   const rect = el.getBoundingClientRect();
@@ -899,22 +927,117 @@ function showSeatPopup(r,c){
   popup.style.display = 'flex';
 }
 
+function renderInfoPopup(r, c, data){
+  const popup = document.getElementById('seat-popup');
+  const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
+  const photoUrl = photoUrlFor(data.name);
+  const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
+  popup.innerHTML = `
+    ${photoHtml}
+    <p class="seat-popup-name">${data.name}</p>
+    <p class="seat-popup-instr">${instrDisplay}</p>
+  `;
+  positionSeatPopup(r,c);
+}
+
+function renderMessagePopup(r, c, message){
+  const popup = document.getElementById('seat-popup');
+  popup.innerHTML = `<p class="seat-popup-instr">${message}</p>`;
+  positionSeatPopup(r,c);
+}
+
+function renderReleasePopup(r, c, data){
+  const popup = document.getElementById('seat-popup');
+  const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
+  const photoUrl = photoUrlFor(data.name);
+  const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
+  popup.innerHTML = `
+    ${photoHtml}
+    <p class="seat-popup-name">${data.name} (toi)</p>
+    <p class="seat-popup-instr">${instrDisplay} — réservée</p>
+    <button class="btn btn-clear seat-popup-btn" id="popup-release-btn">Libérer ma place</button>
+  `;
+  positionSeatPopup(r,c);
+  document.getElementById('popup-release-btn').addEventListener('click', async () => {
+    try {
+      const result = await apiPost({ action:'release', row:r, col:c, name: currentUserName, code: currentUserCode });
+      if(result.ok){
+        await loadAllData();
+        refreshAll();
+        showToast('Place libérée.');
+        renderDetail(r,c);
+        showSeatPopup(r,c);
+      } else {
+        showToast(result.error || 'Erreur, réessaie.');
+      }
+    } catch(err){ showToast('Erreur réseau, réessaie.'); }
+  });
+}
+
+function renderReservePopup(r, c, data){
+  const popup = document.getElementById('seat-popup');
+  const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Place libre';
+  const isRowLocked = !!data.instrument;
+  const instrSelectHtml = isRowLocked ? '' : `
+    <select id="popup-reserve-instr" class="seat-popup-select">
+      <option value="">— Ton instrument —</option>
+      <option value="basse">Basse</option>
+      <option value="contrebasse">Contrebasse</option>
+      <option value="chan">Tambours chan</option>
+      <option value="konk">Konk</option>
+      <option value="chacha">Chacha</option>
+      <option value="siyak">Siyak</option>
+      <option value="clave">Clave</option>
+    </select>`;
+  popup.innerHTML = `
+    <p class="seat-popup-instr">${instrDisplay}</p>
+    ${instrSelectHtml}
+    <button class="btn btn-save seat-popup-btn" id="popup-reserve-btn">Réserver cette place</button>
+  `;
+  positionSeatPopup(r,c);
+  document.getElementById('popup-reserve-btn').addEventListener('click', async () => {
+    let instrument = data.instrument;
+    if(!instrument){
+      const sel = document.getElementById('popup-reserve-instr');
+      instrument = sel ? sel.value : '';
+      if(!instrument){ showToast('Choisis ton instrument.'); return; }
+    }
+    try {
+      const result = await apiPost({ action:'reserve', row:r, col:c, name: currentUserName, instrument, code: currentUserCode });
+      if(result.ok){
+        await loadAllData();
+        refreshAll();
+        showToast('Place réservée !');
+        renderDetail(r,c);
+        showSeatPopup(r,c);
+      } else {
+        await loadAllData();
+        refreshAll();
+        showToast(result.error || "Cette place n'est plus disponible.");
+        renderDetail(r,c);
+        showSeatPopup(r,c);
+      }
+    } catch(err){ showToast('Erreur réseau, réessaie.'); }
+  });
+}
+
 function hideSeatPopup(){
   document.getElementById('seat-popup').style.display = 'none';
 }
 
-// Fermeture de la bulle si on clique ailleurs que sur une place.
-// On utilise composedPath() plutôt que e.target.closest('.pos') car le
-// clic redessine le contenu de la place cliquée (photo/silhouette) juste
-// avant que ce gestionnaire ne s'exécute : l'élément d'origine du clic
-// est alors détaché du DOM et closest() ne retrouve plus son ancêtre
-// .pos, ce qui refermait la bulle aussitôt après son ouverture.
-// composedPath() capture le chemin réel du clic au moment où il a eu
-// lieu, avant toute modification du DOM, donc reste fiable.
+// Fermeture de la bulle si on clique ailleurs que sur une place ou sur la
+// bulle elle-même (ses boutons/menu déroulant, désormais interactifs).
+// composedPath() est utilisé plutôt que e.target.closest(...) car le clic
+// redessine parfois le contenu de la place cliquée juste avant que ce
+// gestionnaire ne s'exécute (voir commentaire historique plus bas) :
+// l'élément d'origine du clic serait alors détaché du DOM et closest() ne
+// retrouverait plus son ancêtre, refermant la bulle à tort.
 document.addEventListener('click', (e) => {
   const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
-  const clickedInsidePos = path.some(node => node.classList && node.classList.contains('pos'));
-  if(!clickedInsidePos){
+  const clickedInsidePopupOrPos = path.some(node =>
+    node.classList && (node.classList.contains('pos') || node.classList.contains('seat-popup'))
+  );
+  if(!clickedInsidePopupOrPos){
     hideSeatPopup();
   }
 });
