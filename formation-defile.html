@@ -865,9 +865,18 @@ function hideSeatPopup(){
   document.getElementById('seat-popup').style.display = 'none';
 }
 
-// Fermeture de la bulle si on clique ailleurs que sur une place
+// Fermeture de la bulle si on clique ailleurs que sur une place.
+// On utilise composedPath() plutôt que e.target.closest('.pos') car le
+// clic redessine le contenu de la place cliquée (photo/silhouette) juste
+// avant que ce gestionnaire ne s'exécute : l'élément d'origine du clic
+// est alors détaché du DOM et closest() ne retrouve plus son ancêtre
+// .pos, ce qui refermait la bulle aussitôt après son ouverture.
+// composedPath() capture le chemin réel du clic au moment où il a eu
+// lieu, avant toute modification du DOM, donc reste fiable.
 document.addEventListener('click', (e) => {
-  if(!e.target.closest('.pos')){
+  const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+  const clickedInsidePos = path.some(node => node.classList && node.classList.contains('pos'));
+  if(!clickedInsidePos){
     hideSeatPopup();
   }
 });
