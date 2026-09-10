@@ -1230,25 +1230,27 @@ document.getElementById('seat-popup').addEventListener('focusout', () => {
   popupFocusTimeout = setTimeout(() => { popupHasFocus = false; }, 400);
 });
 
-// Fermeture de la bulle si on clique ailleurs que sur une place ou sur la
-// bulle elle-même (ses boutons/menu déroulant, désormais interactifs).
-// composedPath() est utilisé plutôt que e.target.closest(...) car le clic
-// redessine parfois le contenu de la place cliquée juste avant que ce
-// gestionnaire ne s'exécute (voir commentaire historique plus bas) :
-// l'élément d'origine du clic serait alors détaché du DOM et closest() ne
-// retrouverait plus son ancêtre, refermant la bulle à tort.
-// popupHasFocus protège en plus contre les clics "fantômes" générés par
-// les menus natifs (datalist/select) sur Android, qui peuvent sembler
-// tomber en dehors de la bulle alors que l'utilisateur y interagit encore.
-document.addEventListener('click', (e) => {
+// ------------------------------------------------------------
+// Détection de "clic en dehors" de la bulle : utilise pointerdown (avec
+// repli sur mousedown/touchstart) plutôt que click. Sur Android Chrome,
+// l'événement click final peut être évalué après qu'un re-rendu ait eu
+// lieu (ex. changement du contenu de la bulle), ce qui décale la
+// détection et referme la bulle par erreur dès qu'on la touche. En
+// vérifiant dès le tout début du contact (avant tout re-rendu), la
+// détection reste fiable.
+// ------------------------------------------------------------
+function handlePotentialOutsideStart(e){
   const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
-  const clickedInsidePopupOrPos = path.some(node =>
+  const insidePopupOrPos = path.some(node =>
     node.classList && (node.classList.contains('pos') || node.classList.contains('seat-popup'))
   );
-  if(!clickedInsidePopupOrPos && !popupHasFocus){
+  if(!insidePopupOrPos){
     hideSeatPopup();
   }
-});
+}
+document.addEventListener('pointerdown', handlePotentialOutsideStart, true);
+document.addEventListener('touchstart', handlePotentialOutsideStart, true);
+document.addEventListener('mousedown', handlePotentialOutsideStart, true);
 
 // Repositionner/masquer la bulle si la vue défile ou se redimensionne —
 // mais pas si c'est le clavier virtuel mobile qui s'ouvre/se déplace
