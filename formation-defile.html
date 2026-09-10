@@ -166,9 +166,9 @@
 
   .front-line{ text-align:center; font-size:0.72rem; color: var(--jaune); letter-spacing: 0.06em; font-weight:700; padding-bottom:8px; border-bottom: 3px dashed rgba(255,201,60,0.3); margin-bottom:4px; }
 
-  /* Zoom manuel de la formation */
-  .formation-viewport{ margin: 0 auto; }
-  #formation{ transform-origin: top left; transition: transform 0.08s ease; }
+  /* Zoom manuel de la formation — centré horizontalement, origine en haut au centre */
+  .formation-viewport{ margin: 0 auto; display:flex; justify-content:center; }
+  #formation{ transform-origin: top center; transition: transform 0.08s ease; }
 
   .zoom-control{ display:flex; align-items:center; gap:8px; }
   .zoom-btn{
@@ -1059,6 +1059,9 @@ document.querySelectorAll('.legend-item').forEach(item => {
 
 // ------------------------------------------------------------
 // Zoom manuel de la formation (slider, boutons, molette, pincement)
+// Correctifs : centrage (transform-origin: top center + viewport en flex
+// centré, sans recalcul manuel de largeur/hauteur) et sensibilité
+// (molette amortie, pincement calculé image par image).
 // ------------------------------------------------------------
 const ZOOM_MIN = 40, ZOOM_MAX = 200, ZOOM_STEP = 5;
 let zoomLevel = 100;
@@ -1070,10 +1073,6 @@ function applyZoom(){
   const el = document.getElementById('formation');
   const scale = zoomLevel / 100;
   el.style.transform = `scale(${scale})`;
-  // La taille naturelle (offsetWidth/Height) n'est pas affectée par transform :
-  // on l'utilise pour redimensionner le conteneur et éviter tout vide ou rognage.
-  formationViewport.style.width = (el.offsetWidth * scale) + 'px';
-  formationViewport.style.height = (el.offsetHeight * scale) + 'px';
   zoomSlider.value = zoomLevel;
   zoomValueLabel.textContent = Math.round(zoomLevel) + '%';
 }
@@ -1087,32 +1086,37 @@ zoomSlider.addEventListener('input', () => setZoom(Number(zoomSlider.value)));
 document.getElementById('zoom-in-btn').addEventListener('click', () => setZoom(zoomLevel + ZOOM_STEP));
 document.getElementById('zoom-out-btn').addEventListener('click', () => setZoom(zoomLevel - ZOOM_STEP));
 
-// Molette souris (Ctrl/Cmd + molette, pour ne pas gêner le défilement normal de la page)
+// Molette souris (Ctrl/Cmd + molette). Le delta est plafonné et amorti
+// pour éviter les sauts brusques avec un trackpad ou une souris "rapide".
 formationViewport.addEventListener('wheel', (e) => {
   if(!(e.ctrlKey || e.metaKey)) return;
   e.preventDefault();
-  setZoom(zoomLevel + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+  const clamped = Math.max(-10, Math.min(10, -e.deltaY));
+  setZoom(zoomLevel + clamped * 0.5);
 }, { passive:false });
 
-// Pincement tactile (deux doigts)
-let pinchStartDist = null, pinchStartZoom = 100;
+// Pincement tactile (deux doigts). Le ratio est recalculé à chaque
+// mouvement à partir de la dernière position (et non du point de
+// départ), ce qui évite l'effet "boule de neige" si les doigts
+// démarrent proches l'un de l'autre.
+let lastPinchDist = null;
 function touchDist(t1, t2){
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
 }
 formationViewport.addEventListener('touchstart', (e) => {
   if(e.touches.length === 2){
-    pinchStartDist = touchDist(e.touches[0], e.touches[1]);
-    pinchStartZoom = zoomLevel;
+    lastPinchDist = touchDist(e.touches[0], e.touches[1]);
   }
 }, { passive:true });
 formationViewport.addEventListener('touchmove', (e) => {
-  if(e.touches.length === 2 && pinchStartDist){
+  if(e.touches.length === 2 && lastPinchDist){
     e.preventDefault();
     const newDist = touchDist(e.touches[0], e.touches[1]);
-    setZoom(pinchStartZoom * (newDist / pinchStartDist));
+    setZoom(zoomLevel * (newDist / lastPinchDist));
+    lastPinchDist = newDist;
   }
 }, { passive:false });
-formationViewport.addEventListener('touchend', () => { pinchStartDist = null; });
+formationViewport.addEventListener('touchend', () => { lastPinchDist = null; });
 
 document.getElementById('gate-submit').addEventListener('click', tryNameEntry);
 document.getElementById('gate-name').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryNameEntry(); });
