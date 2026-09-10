@@ -1210,6 +1210,15 @@ function hideSeatPopup(){
   document.getElementById('seat-popup').style.display = 'none';
 }
 
+// Le focus (champ texte ou menu déroulant) est-il actuellement à
+// l'intérieur de la bulle ? Utilisé pour ignorer les scroll/resize
+// « fantômes » déclenchés par l'ouverture du clavier virtuel mobile
+// pendant que l'utilisateur est en train de saisir quelque chose.
+function isFocusInsidePopup(){
+  const popup = document.getElementById('seat-popup');
+  return popup.contains(document.activeElement);
+}
+
 // Fermeture de la bulle si on clique ailleurs que sur une place ou sur la
 // bulle elle-même (ses boutons/menu déroulant, désormais interactifs).
 // composedPath() est utilisé plutôt que e.target.closest(...) car le clic
@@ -1227,9 +1236,12 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Repositionner/masquer la bulle si la vue défile ou se redimensionne
-window.addEventListener('scroll', hideSeatPopup, true);
-window.addEventListener('resize', hideSeatPopup);
+// Repositionner/masquer la bulle si la vue défile ou se redimensionne —
+// mais pas si c'est simplement le clavier virtuel mobile qui s'ouvre
+// pendant que l'utilisateur tape dans un champ de la bulle (cause du
+// bug Android Chrome où la bulle se refermait toute seule).
+window.addEventListener('scroll', () => { if(!isFocusInsidePopup()) hideSeatPopup(); }, true);
+window.addEventListener('resize', () => { if(!isFocusInsidePopup()) hideSeatPopup(); });
 
 // ------------------------------------------------------------
 // Détail d'une place
