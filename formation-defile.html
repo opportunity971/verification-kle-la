@@ -244,8 +244,9 @@
   <div class="card">
     <h1>KLÉ LA MASS<span class="title-sub">MIZISYEN</span></h1>
     <div id="gate-name-mode">
-      <p>Entre ton nom complet (tel que transmis à l'organisateur) pour accéder au plan.</p>
+      <p>Entre ton nom complet et ton code personnel pour accéder au plan.</p>
       <input type="text" id="gate-name" placeholder="Ton nom complet" autocomplete="off">
+      <input type="text" id="gate-code" placeholder="Ton code (4 chiffres)" autocomplete="off" inputmode="numeric" maxlength="4" style="margin-top:8px;">
       <button class="btn btn-save" id="gate-submit">Entrer</button>
       <p class="gate-error" id="gate-error"></p>
       <button class="link-btn switch-link" id="gate-orga-link">Je suis l'organisateur</button>
@@ -312,10 +313,11 @@
       <div class="roster-list" id="roster-list"></div>
       <div class="add-row">
         <input type="text" id="roster-add-input" placeholder="Nom complet">
+        <input type="text" id="roster-add-code" placeholder="Code (4 chiffres)" inputmode="numeric" maxlength="4" style="max-width:120px;">
         <button class="btn btn-save" id="roster-add-btn">Ajouter</button>
       </div>
-      <label for="roster-bulk-input" style="margin-top:14px;">Ajout groupé (un nom par ligne)</label>
-      <textarea id="roster-bulk-input" rows="4" placeholder="Jean Baptiste&#10;Marie Sonson&#10;..." style="width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12); color: var(--creme); padding:9px 10px; border-radius:10px; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
+      <label for="roster-bulk-input" style="margin-top:14px;">Ajout groupé (une ligne par musicien : Nom;Code)</label>
+      <textarea id="roster-bulk-input" rows="4" placeholder="Jean Baptiste;1234&#10;Marie Sonson;5678&#10;..." style="width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12); color: var(--creme); padding:9px 10px; border-radius:10px; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
       <button class="btn btn-save" id="roster-bulk-btn">Ajouter la liste</button>
     </div>
 
@@ -394,6 +396,7 @@ let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
 let selected = null;
 let isOrganizer = false;
 let currentUserName = '';
+let currentUserCode = '';
 let organizerPassword = '';
 let activeFilter = '';
 
@@ -621,16 +624,23 @@ function renderRoster(){
 
 document.getElementById('roster-add-btn').addEventListener('click', async () => {
   const input = document.getElementById('roster-add-input');
+  const codeInput = document.getElementById('roster-add-code');
   const name = input.value.trim();
+  const code = codeInput.value.trim();
   if(!name) return;
+  if(!/^\d{4}$/.test(code)){
+    showToast('Le code doit être 4 chiffres.');
+    return;
+  }
   if(roster.some(n => normalizeName(n) === normalizeName(name))){
     showToast('Ce nom est déjà dans la liste.');
     return;
   }
   try {
-    const result = await apiPost({ action:'addRosterName', name, password: organizerPassword });
+    const result = await apiPost({ action:'addRosterName', name, code, password: organizerPassword });
     if(result.ok){
       input.value = '';
+      codeInput.value = '';
       await loadAllData();
       renderRoster();
       showToast('Musicien ajouté.');
@@ -644,13 +654,29 @@ document.getElementById('roster-bulk-btn').addEventListener('click', async () =>
   const textarea = document.getElementById('roster-bulk-input');
   const lines = textarea.value.split('\n').map(l => l.trim()).filter(Boolean);
   if(lines.length === 0) return;
+  const entries = [];
+  const invalid = [];
+  lines.forEach(line => {
+    const parts = line.split(';');
+    const name = (parts[0] || '').trim();
+    const code = (parts[1] || '').trim();
+    if(name && /^\d{4}$/.test(code)){
+      entries.push({ name, code });
+    } else {
+      invalid.push(line);
+    }
+  });
+  if(invalid.length > 0){
+    showToast(`${invalid.length} ligne(s) ignorée(s) (format attendu : Nom;Code à 4 chiffres).`);
+  }
+  if(entries.length === 0) return;
   try {
-    const result = await apiPost({ action:'addRosterBulk', names: lines, password: organizerPassword });
+    const result = await apiPost({ action:'addRosterBulk', entries, password: organizerPassword });
     if(result.ok){
       textarea.value = '';
       await loadAllData();
       renderRoster();
-      showToast(`${result.added} musicien(s) ajouté(s) sur ${lines.length}.`);
+      showToast(`${result.added} musicien(s) ajouté(s) sur ${entries.length}.`);
     } else {
       showToast(result.error || "Erreur d'enregistrement.");
     }
@@ -966,7 +992,7 @@ function renderDetail(r,c){
     if(isMine){
       document.getElementById('btn-release').addEventListener('click', async () => {
         try {
-          const result = await apiPost({ action:'release', row:r, col:c, name: currentUserName });
+          const result = await apiPost({ action:'release', row:r, col:c, name: currentUserName, code: currentUserCode });
           if(result.ok){
             await loadAllData();
             refreshAll();
@@ -1016,7 +1042,7 @@ function renderDetail(r,c){
       if(!instrument){ showToast('Choisis ton instrument.'); return; }
     }
     try {
-      const result = await apiPost({ action:'reserve', row:r, col:c, name: currentUserName, instrument });
+      const result = await apiPost({ action:'reserve', row:r, col:c, name: currentUserName, instrument, code: currentUserCode });
       if(result.ok){
         await loadAllData();
         refreshAll();
@@ -1065,6 +1091,7 @@ function findUserPosition(){
 function goToGate(){
   isOrganizer = false;
   currentUserName = '';
+  currentUserCode = '';
   organizerPassword = '';
   selected = null;
   document.getElementById('main-layout').classList.remove('organizer-view');
@@ -1073,6 +1100,7 @@ function goToGate(){
   document.getElementById('gate-orga-mode').style.display = 'none';
   document.getElementById('gate-name-mode').style.display = 'block';
   document.getElementById('gate-name').value = '';
+  document.getElementById('gate-code').value = '';
   document.getElementById('gate-error').textContent = '';
   document.getElementById('orga-inline-login').style.display = 'none';
 }
@@ -1197,6 +1225,7 @@ formationViewport.addEventListener('touchend', () => { lastPinchDist = null; });
 
 document.getElementById('gate-submit').addEventListener('click', tryNameEntry);
 document.getElementById('gate-name').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryNameEntry(); });
+document.getElementById('gate-code').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryNameEntry(); });
 document.getElementById('gate-orga-submit').addEventListener('click', tryOrgaEntry);
 document.getElementById('gate-orga-pass').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryOrgaEntry(); });
 
@@ -1211,16 +1240,17 @@ document.getElementById('gate-back-link').addEventListener('click', () => {
 
 async function tryNameEntry(){
   const typed = document.getElementById('gate-name').value;
-  const norm = normalizeName(typed);
-  if(!norm){ document.getElementById('gate-error').textContent = 'Indique ton nom.'; return; }
+  const typedCode = document.getElementById('gate-code').value.trim();
+  if(!typed.trim()){ document.getElementById('gate-error').textContent = 'Indique ton nom.'; return; }
+  if(!typedCode){ document.getElementById('gate-error').textContent = 'Indique ton code.'; return; }
   try {
-    await loadAllData(); // refresh in case the organizer just added someone
-    const match = roster.find(n => normalizeName(n) === norm);
-    if(!match){
-      document.getElementById('gate-error').textContent = "Nom non reconnu. Contacte l'organisateur.";
+    const result = await apiPost({ action:'checkAccess', name: typed, code: typedCode });
+    if(!result.ok){
+      document.getElementById('gate-error').textContent = result.error || "Nom ou code incorrect. Contacte l'organisateur.";
       return;
     }
-    currentUserName = match;
+    currentUserName = result.name; // casse exacte renvoyée par le serveur
+    currentUserCode = typedCode;
     openApp(false);
   } catch(err){
     document.getElementById('gate-error').textContent = 'Erreur réseau, réessaie.';
