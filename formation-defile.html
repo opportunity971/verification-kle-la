@@ -187,7 +187,7 @@
   .seat-popup{
     position: fixed; z-index: 60; background: var(--panel); border:2px solid var(--jaune);
     border-radius:12px; padding:12px 14px; font-size:0.82rem; color:var(--creme);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.45); pointer-events:auto; max-width:230px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45); pointer-events:auto; width:230px;
     transform: translate(-50%, -100%); margin-top:-12px;
     display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px;
   }
@@ -204,8 +204,12 @@
     color: var(--creme); padding:6px 8px; border-radius:8px; font-family:inherit; font-size:0.8rem;
   }
   .seat-popup .seat-popup-btn{ width:100%; margin-top:2px; padding:8px; font-size:0.82rem; }
-  .seat-popup.seat-popup-wide{ max-width:260px; }
+  .seat-popup.seat-popup-wide{ width:260px; }
   .seat-popup input[type="text"].seat-popup-select{ text-align:center; }
+  @media (max-width: 340px){
+    .seat-popup{ width:190px; }
+    .seat-popup.seat-popup-wide{ width:210px; }
+  }
   .seat-popup::after{
     content:''; position:absolute; left: calc(50% + var(--popup-arrow-offset, 0px)); bottom:-8px; transform:translateX(-50%);
     border-width:8px 8px 0 8px; border-style:solid; border-color: var(--jaune) transparent transparent transparent;
