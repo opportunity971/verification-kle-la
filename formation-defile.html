@@ -210,6 +210,11 @@
     content:''; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%);
     border-width:8px 8px 0 8px; border-style:solid; border-color: var(--jaune) transparent transparent transparent;
   }
+  .seat-popup.popup-flip-below::after{
+    bottom:auto; top:-8px;
+    border-width:0 8px 8px 8px;
+    border-color: transparent transparent var(--jaune) transparent;
+  }
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
     background: linear-gradient(90deg, var(--rouge), var(--violet)); color:var(--creme); padding:11px 20px;
@@ -404,6 +409,7 @@ let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
 let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
 let selected = null;
 let isOrganizer = false;
+let organizerPopupExpanded = false; // false = bulle simple (par défaut), true = bulle complète avec tous les contrôles
 let currentUserName = '';
 let currentUserCode = '';
 let organizerPassword = '';
@@ -875,6 +881,7 @@ async function loadGrid(){
 
 function selectPos(r,c){
   selected = {r,c};
+  organizerPopupExpanded = false; // chaque nouvelle sélection repart sur la bulle simple
   refreshAll();
   renderDetail(r,c);
   showSeatPopup(r,c);
@@ -885,14 +892,20 @@ function selectPos(r,c){
 // ------------------------------------------------------------
 // ------------------------------------------------------------
 // Bulle d'action au clic sur une place : info, réservation ou
-// libération directement depuis la bulle (musicien), info seule
-// pour l'organisateur (qui édite via la barre latérale).
+// libération directement depuis la bulle (musicien). Pour
+// l'organisateur, la bulle simple (identique à celle des musiciens)
+// s'affiche par défaut, avec un bouton "⚙️ Modifier" pour basculer
+// vers la bulle complète (tous les contrôles) à la demande.
 // ------------------------------------------------------------
 function showSeatPopup(r,c){
   const data = grid[keyOf(r,c)] || { instrument:'', name:'', blocked:false, removed:false };
 
   if(isOrganizer){
-    renderOrganizerPopup(r, c, data);
+    if(organizerPopupExpanded){
+      renderOrganizerPopup(r, c, data);
+    } else {
+      renderOrganizerSimplePopup(r, c, data);
+    }
     return;
   }
 
@@ -921,14 +934,46 @@ function showSeatPopup(r,c){
   renderReservePopup(r, c, data);
 }
 
+// Positionne la bulle au-dessus de la place cliquée par défaut, et la
+// bascule en dessous si elle déborderait en haut de l'écran (ex. place
+// de la toute première rangée visible). Le positionnement horizontal
+// est également resserré pour ne jamais dépasser les bords de l'écran.
 function positionSeatPopup(r,c){
   const popup = document.getElementById('seat-popup');
   const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
   if(!el) return;
   const rect = el.getBoundingClientRect();
-  popup.style.left = (rect.left + rect.width / 2) + 'px';
-  popup.style.top = rect.top + 'px';
+  const margin = 10;
+
+  // Neutralise la marge/transform fixées en CSS : le positionnement
+  // (au-dessus ou en dessous) est désormais entièrement calculé ici.
+  popup.style.marginTop = '0px';
   popup.style.display = 'flex';
+  popup.classList.remove('popup-flip-below');
+  popup.style.transform = 'translate(-50%, -100%)';
+  popup.style.left = (rect.left + rect.width / 2) + 'px';
+  popup.style.top = (rect.top - 12) + 'px';
+
+  // Mesure la bulle une fois son contenu déjà en place (appelé après innerHTML).
+  const popupRect = popup.getBoundingClientRect();
+  const spaceAbove = rect.top - margin;
+  const flipBelow = spaceAbove < popupRect.height;
+
+  let top;
+  if(flipBelow){
+    top = rect.bottom + 12;
+  } else {
+    top = rect.top - 12;
+  }
+
+  let left = rect.left + rect.width / 2;
+  const halfWidth = popupRect.width / 2;
+  left = Math.min(window.innerWidth - margin - halfWidth, Math.max(margin + halfWidth, left));
+
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+  popup.style.transform = flipBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)';
+  popup.classList.toggle('popup-flip-below', flipBelow);
 }
 
 function renderInfoPopup(r, c, data){
@@ -945,9 +990,49 @@ function renderInfoPopup(r, c, data){
   positionSeatPopup(r,c);
 }
 
-// Bulle organisateur : reprend tous les contrôles de la barre latérale
-// (instrument, nom, blocage, suppression, réinitialisation) directement
-// au clic sur une place, plutôt que d'obliger à descendre dans le panneau.
+// Bulle simple affichée par défaut à l'organisateur : même contenu
+// que ce que verrait un musicien (photo, nom, instrument, ou état
+// libre/bloqué/supprimé), avec un bouton pour ouvrir la bulle complète.
+function renderOrganizerSimplePopup(r, c, data){
+  const popup = document.getElementById('seat-popup');
+  popup.classList.remove('seat-popup-wide');
+
+  let bodyHtml;
+  if(data.removed){
+    bodyHtml = `<p class="seat-popup-instr">Silhouette supprimée</p>`;
+  } else if(data.blocked){
+    const nameLine = data.name ? `<p class="seat-popup-name">${data.name}</p>` : '';
+    bodyHtml = `${nameLine}<p class="seat-popup-instr">🔒 Place bloquée</p>`;
+  } else if(data.name){
+    const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
+    const photoUrl = photoUrlFor(data.name);
+    const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
+    bodyHtml = `
+      ${photoHtml}
+      <p class="seat-popup-name">${data.name}</p>
+      <p class="seat-popup-instr">${instrDisplay}</p>
+    `;
+  } else {
+    const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Non attribué';
+    bodyHtml = `<p class="seat-popup-instr">${instrDisplay} — libre</p>`;
+  }
+
+  popup.innerHTML = `
+    ${bodyHtml}
+    <button class="btn btn-secondary seat-popup-btn" id="popup-orga-expand-btn">⚙️ Modifier</button>
+  `;
+  positionSeatPopup(r,c);
+
+  document.getElementById('popup-orga-expand-btn').addEventListener('click', () => {
+    organizerPopupExpanded = true;
+    showSeatPopup(r,c);
+  });
+}
+
+// Bulle organisateur complète : reprend tous les contrôles de la barre
+// latérale (instrument, nom, blocage, suppression, réinitialisation)
+// directement au clic sur une place. Accessible via le bouton
+// "⚙️ Modifier" de la bulle simple, avec un retour possible vers celle-ci.
 function renderOrganizerPopup(r, c, data){
   const popup = document.getElementById('seat-popup');
   popup.classList.add('seat-popup-wide');
@@ -956,12 +1041,17 @@ function renderOrganizerPopup(r, c, data){
     popup.innerHTML = `
       <p class="seat-popup-instr">Silhouette supprimée</p>
       <button class="btn btn-save seat-popup-btn" id="popup-restore-btn">Restaurer cette place</button>
+      <button class="btn btn-secondary seat-popup-btn" id="popup-orga-collapse-btn">← Vue simple</button>
     `;
     positionSeatPopup(r,c);
     document.getElementById('popup-restore-btn').addEventListener('click', async () => {
       await setCellRemote(r, c, '', '', false, false);
       showToast('Place restaurée.');
       renderDetail(r,c);
+      showSeatPopup(r,c);
+    });
+    document.getElementById('popup-orga-collapse-btn').addEventListener('click', () => {
+      organizerPopupExpanded = false;
       showSeatPopup(r,c);
     });
     return;
@@ -984,6 +1074,7 @@ function renderOrganizerPopup(r, c, data){
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-block-btn">${data.blocked ? 'Débloquer' : 'Bloquer'}</button>
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-remove-btn">Supprimer silhouette</button>
     <button class="btn btn-clear seat-popup-btn" id="popup-orga-clear-btn">Réinitialiser</button>
+    <button class="btn btn-secondary seat-popup-btn" id="popup-orga-collapse-btn">← Vue simple</button>
   `;
   positionSeatPopup(r,c);
 
@@ -1011,6 +1102,10 @@ function renderOrganizerPopup(r, c, data){
     await setCellRemote(r, c, '', '', false, false);
     showToast('Place réinitialisée.');
     renderDetail(r,c);
+    showSeatPopup(r,c);
+  });
+  document.getElementById('popup-orga-collapse-btn').addEventListener('click', () => {
+    organizerPopupExpanded = false;
     showSeatPopup(r,c);
   });
 }
@@ -1377,10 +1472,13 @@ document.querySelectorAll('.legend-item').forEach(item => {
 // ------------------------------------------------------------
 // Zoom manuel de la formation (slider, boutons, molette, pincement)
 // Correctifs : centrage (transform-origin: top center + viewport en flex
-// centré, sans recalcul manuel de largeur/hauteur) et sensibilité
-// (molette amortie, pincement calculé image par image).
+// centré, sans recalcul manuel de largeur/hauteur), sensibilité de la
+// molette amortie, et sensibilité du pincement réduite de moitié
+// (le ratio brut doigt-à-doigt est désormais atténué avant d'être
+// appliqué au niveau de zoom).
 // ------------------------------------------------------------
 const ZOOM_MIN = 40, ZOOM_MAX = 200, ZOOM_STEP = 5;
+const PINCH_DAMPING = 0.5; // 1 = sensibilité brute, plus petit = moins sensible
 let zoomLevel = 100;
 const zoomSlider = document.getElementById('zoom-slider');
 const zoomValueLabel = document.getElementById('zoom-value');
@@ -1416,7 +1514,8 @@ formationViewport.addEventListener('wheel', (e) => {
 // Pincement tactile (deux doigts). Le ratio est recalculé à chaque
 // mouvement à partir de la dernière position (et non du point de
 // départ), ce qui évite l'effet "boule de neige" si les doigts
-// démarrent proches l'un de l'autre.
+// démarrent proches l'un de l'autre. Le ratio brut est en plus
+// atténué (PINCH_DAMPING) pour rendre le geste moins sensible.
 let lastPinchDist = null;
 function touchDist(t1, t2){
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
@@ -1430,7 +1529,9 @@ formationViewport.addEventListener('touchmove', (e) => {
   if(e.touches.length === 2 && lastPinchDist){
     e.preventDefault();
     const newDist = touchDist(e.touches[0], e.touches[1]);
-    setZoom(zoomLevel * (newDist / lastPinchDist));
+    const rawRatio = newDist / lastPinchDist;
+    const dampedRatio = 1 + (rawRatio - 1) * PINCH_DAMPING;
+    setZoom(zoomLevel * dampedRatio);
     lastPinchDist = newDist;
   }
 }, { passive:false });
