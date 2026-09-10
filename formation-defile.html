@@ -1210,14 +1210,25 @@ function hideSeatPopup(){
   document.getElementById('seat-popup').style.display = 'none';
 }
 
-// Le focus (champ texte ou menu déroulant) est-il actuellement à
-// l'intérieur de la bulle ? Utilisé pour ignorer les scroll/resize
-// « fantômes » déclenchés par l'ouverture du clavier virtuel mobile
-// pendant que l'utilisateur est en train de saisir quelque chose.
-function isFocusInsidePopup(){
-  const popup = document.getElementById('seat-popup');
-  return popup.contains(document.activeElement);
-}
+// ------------------------------------------------------------
+// Verrou de focus sur la bulle : reste actif tant qu'un champ/menu de
+// la bulle a le focus, avec un court délai de tolérance après la perte
+// du focus. Ce délai est nécessaire car sur Android Chrome, ouvrir la
+// liste de suggestions (datalist) d'un champ ou le menu déroulant natif
+// d'un <select> fait parfois perdre le focus au champ pendant un instant
+// (ces menus sont des fenêtres du système, pas des éléments de la page),
+// ce qui déclenchait à tort la fermeture de la bulle en pleine saisie.
+// ------------------------------------------------------------
+let popupHasFocus = false;
+let popupFocusTimeout = null;
+document.getElementById('seat-popup').addEventListener('focusin', () => {
+  popupHasFocus = true;
+  if(popupFocusTimeout){ clearTimeout(popupFocusTimeout); popupFocusTimeout = null; }
+});
+document.getElementById('seat-popup').addEventListener('focusout', () => {
+  if(popupFocusTimeout) clearTimeout(popupFocusTimeout);
+  popupFocusTimeout = setTimeout(() => { popupHasFocus = false; }, 400);
+});
 
 // Fermeture de la bulle si on clique ailleurs que sur une place ou sur la
 // bulle elle-même (ses boutons/menu déroulant, désormais interactifs).
@@ -1226,22 +1237,24 @@ function isFocusInsidePopup(){
 // gestionnaire ne s'exécute (voir commentaire historique plus bas) :
 // l'élément d'origine du clic serait alors détaché du DOM et closest() ne
 // retrouverait plus son ancêtre, refermant la bulle à tort.
+// popupHasFocus protège en plus contre les clics "fantômes" générés par
+// les menus natifs (datalist/select) sur Android, qui peuvent sembler
+// tomber en dehors de la bulle alors que l'utilisateur y interagit encore.
 document.addEventListener('click', (e) => {
   const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
   const clickedInsidePopupOrPos = path.some(node =>
     node.classList && (node.classList.contains('pos') || node.classList.contains('seat-popup'))
   );
-  if(!clickedInsidePopupOrPos){
+  if(!clickedInsidePopupOrPos && !popupHasFocus){
     hideSeatPopup();
   }
 });
 
 // Repositionner/masquer la bulle si la vue défile ou se redimensionne —
-// mais pas si c'est simplement le clavier virtuel mobile qui s'ouvre
-// pendant que l'utilisateur tape dans un champ de la bulle (cause du
-// bug Android Chrome où la bulle se refermait toute seule).
-window.addEventListener('scroll', () => { if(!isFocusInsidePopup()) hideSeatPopup(); }, true);
-window.addEventListener('resize', () => { if(!isFocusInsidePopup()) hideSeatPopup(); });
+// mais pas si c'est le clavier virtuel mobile qui s'ouvre/se déplace
+// pendant que l'utilisateur interagit avec un champ de la bulle.
+window.addEventListener('scroll', () => { if(!popupHasFocus) hideSeatPopup(); }, true);
+window.addEventListener('resize', () => { if(!popupHasFocus) hideSeatPopup(); });
 
 // ------------------------------------------------------------
 // Détail d'une place
