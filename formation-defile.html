@@ -299,7 +299,6 @@
   <div class="sidebar">
     <div>
       <h1>KLÉ LA MASS<span class="title-sub">MIZISYEN</span></h1>
-      <p class="parade-date-banner" id="sidebar-parade-date"></p>
       <p class="sub" id="intro-sub">200 places · 40 rangées de 5. Clique une place libre de ton instrument pour réserver.</p>
     </div>
 
@@ -416,7 +415,7 @@
     </div>
     <div class="formation-viewport" id="formation-viewport">
       <div class="formation" id="formation">
-        <div class="front-line">TÊTE DU CORTÈGE</div>
+        <div class="front-line" id="front-line-banner">TÊTE DU CORTÈGE</div>
       </div>
     </div>
   </div>
@@ -474,9 +473,10 @@ function formatParadeDate(iso){
 function renderParadeDateBanner(){
   const text = paradeDate ? `Déboulé du ${formatParadeDate(paradeDate)}` : '';
   const gateEl = document.getElementById('gate-parade-date');
-  const sidebarEl = document.getElementById('sidebar-parade-date');
   if(gateEl) gateEl.textContent = text;
-  if(sidebarEl) sidebarEl.textContent = text;
+  // Au-dessus de la grille : remplace "TÊTE DU CORTÈGE" par la date dès qu'elle est définie.
+  const frontLineEl = document.getElementById('front-line-banner');
+  if(frontLineEl) frontLineEl.textContent = text || 'TÊTE DU CORTÈGE';
 }
 
 // ------------------------------------------------------------
