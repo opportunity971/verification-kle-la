@@ -246,6 +246,11 @@
   #access-gate .gate-error{ color:#FF9B94; font-size:0.8rem; margin-top:8px; min-height:1.1em; }
   #access-gate .switch-link{ margin-top:14px; }
 
+  .parade-date-banner{
+    font-size:0.78rem; font-weight:700; color: var(--jaune); letter-spacing:0.02em;
+    margin: -6px 0 14px 0;
+  }
+
   .autocomplete-dropdown{
     position: fixed; z-index: 70; background: var(--panel); border:2px solid var(--jaune);
     border-radius:10px; max-height:180px; overflow-y:auto; box-shadow: 0 6px 18px rgba(0,0,0,0.45);
@@ -266,6 +271,7 @@
 <div id="access-gate">
   <div class="card">
     <h1>KLÉ LA MASS<span class="title-sub">MIZISYEN</span></h1>
+    <p class="parade-date-banner" id="gate-parade-date"></p>
     <div id="gate-name-mode">
       <p>Entre ton nom complet et ton code personnel pour accéder au plan.</p>
       <input type="text" id="gate-name" placeholder="Ton nom complet" autocomplete="off">
@@ -293,6 +299,7 @@
   <div class="sidebar">
     <div>
       <h1>KLÉ LA MASS<span class="title-sub">MIZISYEN</span></h1>
+      <p class="parade-date-banner" id="sidebar-parade-date"></p>
       <p class="sub" id="intro-sub">200 places · 40 rangées de 5. Clique une place libre de ton instrument pour réserver.</p>
     </div>
 
@@ -348,6 +355,12 @@
       <label for="roster-bulk-input" style="margin-top:14px;">Ajout groupé (une ligne par musicien : Nom;Code)</label>
       <textarea id="roster-bulk-input" rows="4" placeholder="Jean Baptiste;1234&#10;Marie Sonson;5678&#10;..." style="width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12); color: var(--creme); padding:9px 10px; border-radius:10px; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
       <button class="btn btn-save" id="roster-bulk-btn">Ajouter la liste</button>
+    </div>
+
+    <div id="paradedate-block" style="display:none;">
+      <p class="panel-title">DATE DU DÉFILÉ</p>
+      <input type="date" id="paradedate-input">
+      <button class="btn btn-save" id="paradedate-save-btn">Enregistrer la date</button>
     </div>
 
     <div id="rowlabel-block" style="display:none;">
@@ -422,6 +435,7 @@ let grid = {};
 let roster = []; // array of authorized full names
 let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
 let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
+let paradeDate = ''; // date du défilé au format ISO (YYYY-MM-DD), gérée par l'organisateur
 let selected = null;
 let isOrganizer = false;
 let organizerPopupExpanded = false; // false = bulle simple (par défaut), true = bulle complète avec tous les contrôles
@@ -442,6 +456,27 @@ function emptyGrid(){
   const g = {};
   for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) g[keyOf(r,c)] = { instrument:'', name:'', blocked:false, removed:false };
   return g;
+}
+
+// ------------------------------------------------------------
+// Date du défilé (affichée en haut de page pour tout le monde,
+// modifiable uniquement par l'organisateur)
+// ------------------------------------------------------------
+function formatParadeDate(iso){
+  if(!iso) return '';
+  const parts = iso.split('-');
+  if(parts.length !== 3) return '';
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  if(isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+}
+
+function renderParadeDateBanner(){
+  const text = paradeDate ? `Déboulé du ${formatParadeDate(paradeDate)}` : '';
+  const gateEl = document.getElementById('gate-parade-date');
+  const sidebarEl = document.getElementById('sidebar-parade-date');
+  if(gateEl) gateEl.textContent = text;
+  if(sidebarEl) sidebarEl.textContent = text;
 }
 
 // ------------------------------------------------------------
@@ -492,6 +527,8 @@ async function loadAllData(){
     roster = data.roster || [];
     rowLabels = data.labels || {};
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
+    paradeDate = data.paradeDate || '';
+    renderParadeDateBanner();
     return true;
   } catch(err){
     grid = emptyGrid();
@@ -728,6 +765,23 @@ document.getElementById('roster-bulk-btn').addEventListener('click', async () =>
 });
 
 // ------------------------------------------------------------
+// Date du défilé — contrôle organisateur
+// ------------------------------------------------------------
+document.getElementById('paradedate-save-btn').addEventListener('click', async () => {
+  const val = document.getElementById('paradedate-input').value;
+  try {
+    const result = await apiPost({ action:'setParadeDate', date: val, password: organizerPassword });
+    if(result.ok){
+      paradeDate = val;
+      renderParadeDateBanner();
+      showToast('Date du défilé mise à jour.');
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+// ------------------------------------------------------------
 // Étiquette / couleur de rangée
 // ------------------------------------------------------------
 function populateRowLabelSelect(){
@@ -891,6 +945,7 @@ async function loadGrid(){
   if(isOrganizer){
     populateRowLabelSelect();
     populateRowManageSelects();
+    document.getElementById('paradedate-input').value = paradeDate;
   }
 }
 
@@ -1491,6 +1546,8 @@ async function submitOrgaInline(){
       document.getElementById('btn-toggle-orga').textContent = 'Quitter le mode organisateur';
       document.getElementById('roster-block').style.display = 'block';
       renderRoster();
+      document.getElementById('paradedate-block').style.display = 'block';
+      document.getElementById('paradedate-input').value = paradeDate;
       document.getElementById('rowlabel-block').style.display = 'block';
       document.getElementById('reset-block').style.display = 'block';
       populateRowLabelSelect();
@@ -1650,6 +1707,8 @@ function openApp(asOrganizer){
     document.getElementById('btn-toggle-orga').textContent = 'Quitter le mode organisateur';
     document.getElementById('roster-block').style.display = 'block';
     renderRoster();
+    document.getElementById('paradedate-block').style.display = 'block';
+    document.getElementById('paradedate-input').value = paradeDate;
     document.getElementById('rowlabel-block').style.display = 'block';
     document.getElementById('reset-block').style.display = 'block';
     document.getElementById('rowmanage-block').style.display = 'block';
@@ -1660,6 +1719,7 @@ function openApp(asOrganizer){
     document.getElementById('mode-badge').classList.remove('on');
     document.getElementById('btn-toggle-orga').textContent = 'Accès organisateur';
     document.getElementById('roster-block').style.display = 'none';
+    document.getElementById('paradedate-block').style.display = 'none';
     document.getElementById('rowlabel-block').style.display = 'none';
     document.getElementById('reset-block').style.display = 'none';
     document.getElementById('rowmanage-block').style.display = 'none';
@@ -1729,11 +1789,13 @@ window.addEventListener('resize', positionAutoDropdown);
 // ------------------------------------------------------------
 // Pré-chargement de la liste des noms pour alimenter l'autocomplétion
 // (roster) et activation sur les deux champs nom permanents de la page
-// (connexion musicien, ajout d'un musicien côté organisateur).
+// (connexion musicien, ajout d'un musicien côté organisateur). Charge
+// aussi la date du défilé (paradeDate) pour affichage immédiat sur
+// l'écran de connexion, avant même que l'utilisateur ne se connecte.
 // ------------------------------------------------------------
 async function preloadRosterDatalist(){
   try {
-    await loadAllData(); // remplit la variable "roster" (noms uniquement, pas les codes)
+    await loadAllData(); // remplit "roster" (noms seulement) et "paradeDate"
   } catch(err){
     // Pas grave : les champs restent utilisables sans autocomplétion si ça échoue.
   }
