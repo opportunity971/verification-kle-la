@@ -307,6 +307,13 @@
       <button class="link-btn" id="btn-toggle-orga">Accès organisateur</button>
       <button class="link-btn" id="btn-logout">Quitter</button>
     </div>
+
+    <div id="paradedate-block" style="display:none;">
+      <p class="panel-title">DATE DU DÉFILÉ</p>
+      <input type="date" id="paradedate-input">
+      <button class="btn btn-save" id="paradedate-save-btn">Enregistrer la date</button>
+    </div>
+
     <div id="orga-inline-login" style="display:none;">
       <input type="password" id="orga-inline-pass" placeholder="Mot de passe organisateur">
       <button class="btn btn-save" id="orga-inline-submit">Entrer</button>
@@ -354,12 +361,6 @@
       <label for="roster-bulk-input" style="margin-top:14px;">Ajout groupé (une ligne par musicien : Nom;Code)</label>
       <textarea id="roster-bulk-input" rows="4" placeholder="Jean Baptiste;1234&#10;Marie Sonson;5678&#10;..." style="width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12); color: var(--creme); padding:9px 10px; border-radius:10px; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
       <button class="btn btn-save" id="roster-bulk-btn">Ajouter la liste</button>
-    </div>
-
-    <div id="paradedate-block" style="display:none;">
-      <p class="panel-title">DATE DU DÉFILÉ</p>
-      <input type="date" id="paradedate-input">
-      <button class="btn btn-save" id="paradedate-save-btn">Enregistrer la date</button>
     </div>
 
     <div id="rowlabel-block" style="display:none;">
