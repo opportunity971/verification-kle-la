@@ -743,8 +743,14 @@ document.getElementById('roster-add-input').addEventListener('input', async () =
     if(result.ok){
       hint.textContent = `Déjà enregistré — code : ${result.code || '(aucun code)'}`;
       hint.style.display = 'block';
+    } else {
+      hint.textContent = result.error || "Impossible de récupérer le code.";
+      hint.style.display = 'block';
     }
-  } catch(err){ /* pas grave, l'organisateur peut réessayer */ }
+  } catch(err){
+    hint.textContent = 'Erreur réseau, réessaie.';
+    hint.style.display = 'block';
+  }
 });
 
 document.getElementById('roster-add-btn').addEventListener('click', async () => {
