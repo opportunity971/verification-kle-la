@@ -155,10 +155,13 @@
   .pos.taken svg{ filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)) grayscale(0.25) saturate(0.65) brightness(0.78); }
   .pos.taken:hover svg{ filter: drop-shadow(0 0 5px rgba(255,201,60,0.6)) grayscale(0.25) saturate(0.65) brightness(0.78); }
   .pos.taken .initials{ color: rgba(20,15,38,0.85); }
-  .pos.blocked svg path, .pos.blocked svg circle:not(.taken-dot){ fill: #5A5470 !important; opacity:0.55; }
+  /* Place bloquée sans instrument attribué : silhouette grise neutre */
+  .pos.blocked.blocked-empty svg path, .pos.blocked.blocked-empty svg circle:not(.taken-dot){ fill: #5A5470 !important; opacity:0.55; }
+  /* Place bloquée avec instrument attribué : couleur de l'instrument conservée mais grisée (même traitement visuel que les places réservées) */
+  .pos.blocked:not(.blocked-empty) svg{ filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)) grayscale(0.35) saturate(0.55) brightness(0.65) !important; }
   .pos.blocked .initials{ color: var(--creme); font-size:0.75rem; }
   .pos.blocked:hover{ transform: none; cursor: not-allowed; }
-  .pos.blocked:hover svg{ filter: none; }
+  .pos.blocked.blocked-empty:hover svg{ filter: none; }
 
   .pos.removed{ visibility: hidden; }
   .organizer-view .pos.removed{ visibility: visible; cursor:pointer; }
@@ -585,7 +588,10 @@ function refreshCell(r,c){
   el.className = 'pos';
   if(data.instrument) el.classList.add(data.instrument);
   if(data.name) el.classList.add('taken');
-  if(data.blocked) el.classList.add('blocked');
+  if(data.blocked){
+    el.classList.add('blocked');
+    if(!data.instrument) el.classList.add('blocked-empty');
+  }
   if(data.removed) el.classList.add('removed');
 
   if(data.removed){
