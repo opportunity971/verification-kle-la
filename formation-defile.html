@@ -1864,6 +1864,10 @@ function showAutoMatches(inputEl){
       inputEl.value = autoDropdownMatches[i];
       hideAutoDropdown();
       inputEl.focus();
+      // Remplir la valeur par script ne déclenche pas l'événement 'input' tout
+      // seul : on le déclenche nous-mêmes pour que tout ce qui écoute la frappe
+      // sur ce champ (dont le rappel de code existant) réagisse aussi ici.
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
 }
