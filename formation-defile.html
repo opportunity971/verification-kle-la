@@ -1173,7 +1173,9 @@ function renderOrganizerPopup(r, c, data){
     showSeatPopup(r,c);
   });
   document.getElementById('popup-orga-block-btn').addEventListener('click', async () => {
-    await setCellRemote(r, c, data.instrument, data.name, !data.blocked, false);
+    const currentInstrument = document.getElementById('popup-orga-instr').value;
+    const currentName = document.getElementById('popup-orga-name').value.trim();
+    await setCellRemote(r, c, currentInstrument, currentName, !data.blocked, false);
     showToast(data.blocked ? 'Place débloquée.' : 'Place bloquée.');
     renderDetail(r,c);
     showSeatPopup(r,c);
@@ -1382,7 +1384,9 @@ function renderDetail(r,c){
       showToast('Place mise à jour.');
     });
     document.getElementById('btn-toggle-block').addEventListener('click', async () => {
-      await setCellRemote(r, c, data.instrument, data.name, !data.blocked, false);
+      const currentInstrument = document.getElementById('inp-instr').value;
+      const currentName = document.getElementById('inp-name').value.trim();
+      await setCellRemote(r, c, currentInstrument, currentName, !data.blocked, false);
       showToast(data.blocked ? 'Place débloquée.' : 'Place bloquée.');
       renderDetail(r,c);
     });
