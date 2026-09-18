@@ -737,6 +737,8 @@ document.getElementById('roster-add-input').addEventListener('input', async () =
     hint.textContent = '';
     return;
   }
+  hint.textContent = 'Recherche du code…';
+  hint.style.display = 'block';
   try {
     const result = await apiPost({ action:'getCode', name: typedName, password: organizerPassword });
     // On revérifie que le champ n'a pas changé entre-temps (réponse arrivée en retard).
