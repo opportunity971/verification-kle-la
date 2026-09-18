@@ -728,6 +728,7 @@ document.getElementById('roster-suggest-code-btn').addEventListener('click', asy
 // ------------------------------------------------------------
 document.getElementById('roster-add-input').addEventListener('input', async () => {
   const nameInput = document.getElementById('roster-add-input');
+  const codeInput = document.getElementById('roster-add-code');
   const hint = document.getElementById('roster-existing-code-hint');
   const typedName = nameInput.value.trim();
   const isExisting = typedName && roster.some(n => normalizeName(n) === normalizeName(typedName));
@@ -741,7 +742,8 @@ document.getElementById('roster-add-input').addEventListener('input', async () =
     // On revérifie que le champ n'a pas changé entre-temps (réponse arrivée en retard).
     if(document.getElementById('roster-add-input').value.trim() !== typedName) return;
     if(result.ok){
-      hint.textContent = `Déjà enregistré — code : ${result.code || '(aucun code)'}`;
+      codeInput.value = result.code || '';
+      hint.textContent = 'Musicien déjà enregistré — code affiché ci-dessus.';
       hint.style.display = 'block';
     } else {
       hint.textContent = result.error || "Impossible de récupérer le code.";
