@@ -944,8 +944,8 @@ document.getElementById('reset-confirm-btn').addEventListener('click', async () 
 async function loadGrid(){
   // Si les données ont déjà été préchargées avec succès avant la connexion
   // (voir preloadRosterDatalist), on évite de refaire un aller-retour complet
-  // vers le Google Sheet ici : on affiche tout de suite avec les données déjà
-  // en mémoire, et on les rafraîchit ensuite en silence en arrière-plan.
+  // vers le Google Sheet ici : on affiche directement avec les données déjà
+  // en mémoire, ce qui accélère nettement l'ouverture de la grille.
   const usedCache = initialDataLoaded;
   const tasks = [loadPhotoMap()];
   if(!usedCache) tasks.push(loadAllData());
@@ -963,20 +963,6 @@ async function loadGrid(){
     populateRowLabelSelect();
     populateRowManageSelects();
     document.getElementById('paradedate-input').value = paradeDate;
-  }
-
-  if(usedCache){
-    // Rafraîchissement silencieux en arrière-plan pour refléter les changements
-    // survenus depuis le préchargement, sans bloquer l'affichage déjà rendu.
-    loadAllData().then(() => {
-      refreshAll();
-      renderAllRowLabels();
-      if(isOrganizer){
-        populateRowLabelSelect();
-        populateRowManageSelects();
-        document.getElementById('paradedate-input').value = paradeDate;
-      }
-    });
   }
 }
 
