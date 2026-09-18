@@ -362,6 +362,7 @@
         <button class="btn btn-secondary" id="roster-suggest-code-btn" style="width:auto; margin-top:0; padding:9px 12px; white-space:nowrap;" title="Suggérer un code libre">🎲</button>
         <button class="btn btn-save" id="roster-add-btn">Ajouter</button>
       </div>
+      <p class="empty-msg" id="roster-existing-code-hint" style="display:none; color: var(--jaune); font-weight:700; margin-top:6px;"></p>
       <label for="roster-bulk-input" style="margin-top:14px;">Ajout groupé (une ligne par musicien : Nom;Code)</label>
       <textarea id="roster-bulk-input" rows="4" placeholder="Jean Baptiste;1234&#10;Marie Sonson;5678&#10;..." style="width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12); color: var(--creme); padding:9px 10px; border-radius:10px; font-family:inherit; font-size:0.85rem; resize:vertical;"></textarea>
       <button class="btn btn-save" id="roster-bulk-btn">Ajouter la liste</button>
@@ -720,6 +721,32 @@ document.getElementById('roster-suggest-code-btn').addEventListener('click', asy
   } catch(err){ showToast('Erreur réseau, réessaie.'); }
 });
 
+// ------------------------------------------------------------
+// Rappel de code : dès qu'un nom déjà présent dans la liste est tapé dans
+// le champ d'ajout, on va chercher son code existant côté serveur et on
+// l'affiche directement — pratique quand un musicien a oublié son code.
+// ------------------------------------------------------------
+document.getElementById('roster-add-input').addEventListener('input', async () => {
+  const nameInput = document.getElementById('roster-add-input');
+  const hint = document.getElementById('roster-existing-code-hint');
+  const typedName = nameInput.value.trim();
+  const isExisting = typedName && roster.some(n => normalizeName(n) === normalizeName(typedName));
+  if(!isExisting){
+    hint.style.display = 'none';
+    hint.textContent = '';
+    return;
+  }
+  try {
+    const result = await apiPost({ action:'getCode', name: typedName, password: organizerPassword });
+    // On revérifie que le champ n'a pas changé entre-temps (réponse arrivée en retard).
+    if(document.getElementById('roster-add-input').value.trim() !== typedName) return;
+    if(result.ok){
+      hint.textContent = `Déjà enregistré — code : ${result.code || '(aucun code)'}`;
+      hint.style.display = 'block';
+    }
+  } catch(err){ /* pas grave, l'organisateur peut réessayer */ }
+});
+
 document.getElementById('roster-add-btn').addEventListener('click', async () => {
   const input = document.getElementById('roster-add-input');
   const codeInput = document.getElementById('roster-add-code');
@@ -739,6 +766,7 @@ document.getElementById('roster-add-btn').addEventListener('click', async () => 
     if(result.ok){
       input.value = '';
       codeInput.value = '';
+      document.getElementById('roster-existing-code-hint').style.display = 'none';
       await loadAllData();
       renderRoster();
       showToast('Musicien ajouté.');
