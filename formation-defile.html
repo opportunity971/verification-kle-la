@@ -520,18 +520,39 @@ function photoUrlFor(name){
 // ------------------------------------------------------------
 // Passerelle Google Sheet
 // ------------------------------------------------------------
+// Petite nouvelle tentative automatique en cas d'échec réseau ou de réponse
+// invalide (fréquent sur mobile / avec Google Apps Script), avant d'abandonner
+// et de laisser l'appelant afficher une erreur à l'utilisateur.
+async function fetchWithRetry(doFetch, attempts){
+  attempts = attempts || 2;
+  let lastErr;
+  for(let i = 0; i < attempts; i++){
+    try {
+      return await doFetch();
+    } catch(err){
+      lastErr = err;
+      if(i < attempts - 1) await new Promise(resolve => setTimeout(resolve, 700));
+    }
+  }
+  throw lastErr;
+}
+
 async function apiGet(){
-  const res = await fetch(API_URL);
-  return res.json();
+  return fetchWithRetry(async () => {
+    const res = await fetch(API_URL);
+    return res.json();
+  });
 }
 
 async function apiPost(payload){
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
+  return fetchWithRetry(async () => {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    return res.json();
   });
-  return res.json();
 }
 
 async function loadAllData(){
