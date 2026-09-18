@@ -609,7 +609,7 @@ function refreshCell(r,c){
   }
 
   const initials = data.name ? data.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : (data.blocked ? '🔒' : '');
-  const instrLabel = (data.instrument && !data.blocked) ? sectionAbbrev[data.instrument] : '';
+  const instrLabel = data.instrument ? sectionAbbrev[data.instrument] : '';
   // Photo du musicien si la place est occupée et qu'une photo existe pour ce nom ; repli silencieux sinon.
   const photoUrl = (data.name && !data.blocked) ? photoUrlFor(data.name) : '';
   const photoHtml = photoUrl ? `<span class="photo-ring"><img src="${photoUrl}" alt="" loading="lazy" onerror="this.parentElement.style.display='none';"></span>` : '';
