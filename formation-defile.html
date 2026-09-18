@@ -396,7 +396,14 @@
 
     <div id="reset-block" style="display:none;">
       <p class="panel-title">ZONE SENSIBLE</p>
-      <button class="btn btn-clear" id="reset-open-btn">Réinitialiser toutes les places</button>
+      <button class="btn btn-clear" id="reset-keep-blocked-open-btn">Réinitialiser sauf les places bloquées</button>
+      <div id="reset-keep-blocked-confirm" style="display:none; margin-top:10px;">
+        <p class="empty-msg">Ça vide toutes les places non bloquées (instruments, réservations, silhouettes supprimées) et efface les étiquettes de rangée. Les places bloquées restent inchangées. La liste des musiciens autorisés est conservée. Irréversible.</p>
+        <button class="btn btn-clear" id="reset-keep-blocked-confirm-btn">Oui, réinitialiser sauf les bloquées</button>
+        <button class="btn btn-secondary" id="reset-keep-blocked-cancel-btn">Annuler</button>
+      </div>
+
+      <button class="btn btn-clear" id="reset-open-btn" style="margin-top:16px;">Réinitialiser toutes les places</button>
       <div id="reset-confirm" style="display:none; margin-top:10px;">
         <p class="empty-msg">Ça remet les 200 places à zéro (instruments, réservations, blocages, silhouettes supprimées) et efface aussi les étiquettes de rangée. La liste des musiciens autorisés est conservée. Irréversible.</p>
         <button class="btn btn-clear" id="reset-confirm-btn">Oui, tout réinitialiser</button>
@@ -911,6 +918,28 @@ document.getElementById('remove-row-btn').addEventListener('click', async () => 
     if(result.ok){
       await reloadAfterRowStructureChange();
       showToast(`Rangée ${at} supprimée.`);
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+// ------------------------------------------------------------
+// Réinitialisation partielle (sauf les places bloquées)
+// ------------------------------------------------------------
+document.getElementById('reset-keep-blocked-open-btn').addEventListener('click', () => {
+  document.getElementById('reset-keep-blocked-confirm').style.display = 'block';
+});
+document.getElementById('reset-keep-blocked-cancel-btn').addEventListener('click', () => {
+  document.getElementById('reset-keep-blocked-confirm').style.display = 'none';
+});
+document.getElementById('reset-keep-blocked-confirm-btn').addEventListener('click', async () => {
+  try {
+    const result = await apiPost({ action:'resetGridKeepBlocked', password: organizerPassword });
+    document.getElementById('reset-keep-blocked-confirm').style.display = 'none';
+    if(result.ok){
+      await reloadAfterRowStructureChange();
+      showToast('Places non bloquées réinitialisées.');
     } else {
       showToast(result.error || "Erreur d'enregistrement.");
     }
