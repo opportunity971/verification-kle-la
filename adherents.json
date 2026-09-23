@@ -147,9 +147,9 @@
     "nom": "APATOU",
     "prenom": "Megane"
   },
-  "apatout-domitile": {
+  "apatout-domitille": {
     "nom": "APATOUT",
-    "prenom": "Domitile"
+    "prenom": "Domitille"
   },
   "appollon-laury": {
     "nom": "APPOLLON",
@@ -4594,9 +4594,5 @@
   "zircon-norah-anjali": {
     "nom": "ZIRCON",
     "prenom": "Norah-Anjali"
-  },
-  "apatout-domitille": {
-    "nom": "APATOUT",
-    "prenom": "Domitille"
   }
 }
