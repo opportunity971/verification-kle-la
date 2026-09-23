@@ -721,11 +721,16 @@ function renderRoster(){
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.idx, 10);
       const name = roster[idx];
+      if(!confirm(`Retirer "${name}" (ligne ${idx + 1}) de la liste des musiciens autorisés ?`)) return;
       try {
-        await apiPost({ action:'removeRosterName', name, password: organizerPassword });
-        await loadAllData();
-        renderRoster();
-        showToast('Musicien retiré.');
+        const result = await apiPost({ action:'removeRosterAt', index: idx, password: organizerPassword });
+        if(result.ok){
+          await loadAllData();
+          renderRoster();
+          showToast('Musicien retiré.');
+        } else {
+          showToast(result.error || "Erreur d'enregistrement.");
+        }
       } catch(err){ showToast('Erreur réseau, réessaie.'); }
     });
   });
