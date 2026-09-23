@@ -355,6 +355,7 @@
 
     <div id="roster-block" style="display:none;">
       <p class="panel-title">MUSICIENS AUTORISÉS</p>
+      <input type="text" id="roster-search-input" placeholder="Rechercher un musicien à retirer…" autocomplete="off" style="margin-bottom:8px;">
       <div class="roster-list" id="roster-list"></div>
       <div class="add-row">
         <input type="text" id="roster-add-input" placeholder="Nom complet" autocomplete="off">
@@ -711,10 +712,25 @@ function renderRoster(){
     list.innerHTML = '<p class="empty-msg">Aucun musicien ajouté pour l\'instant.</p>';
     return;
   }
-  list.innerHTML = roster.map((name, i) => `
+
+  // Filtre par le texte tapé dans le champ de recherche, mais l'index (data-idx)
+  // reste toujours celui de la position réelle dans le tableau `roster` complet
+  // (pas dans la liste filtrée affichée) — indispensable pour cibler la bonne
+  // ligne côté serveur avec removeRosterAt, y compris en cas de nom en double.
+  const searchInput = document.getElementById('roster-search-input');
+  const query = normalizeName(searchInput ? searchInput.value : '');
+  const indexed = roster.map((name, i) => ({ name, i }));
+  const matches = query ? indexed.filter(m => normalizeName(m.name).includes(query)) : indexed;
+
+  if(matches.length === 0){
+    list.innerHTML = '<p class="empty-msg">Aucun musicien ne correspond à cette recherche.</p>';
+    return;
+  }
+
+  list.innerHTML = matches.map(m => `
     <div class="roster-row">
-      <span>${name}</span>
-      <button data-idx="${i}" class="roster-remove" title="Retirer">✕</button>
+      <span>${m.name}</span>
+      <button data-idx="${m.i}" class="roster-remove" title="Retirer">✕</button>
     </div>
   `).join('');
   document.querySelectorAll('.roster-remove').forEach(btn => {
@@ -735,6 +751,8 @@ function renderRoster(){
     });
   });
 }
+
+document.getElementById('roster-search-input').addEventListener('input', renderRoster);
 
 document.getElementById('roster-suggest-code-btn').addEventListener('click', async () => {
   try {
