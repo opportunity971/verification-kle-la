@@ -923,6 +923,7 @@ async function loadAllData(){
     roster = data.roster || [];
     rowLabels = data.labels || {};
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
+    applyRowInstruments();
     paradeDate = data.paradeDate || '';
     renderParadeDateBanner();
     initialDataLoaded = true;
@@ -932,6 +933,20 @@ async function loadAllData(){
     roster = [];
     rowLabels = {};
     return false;
+  }
+}
+
+// Une rangée dont l'instrument a été imposé par l'organisateur garde sa
+// couleur même quand une place est libérée : toute place sans musicien et
+// sans instrument propre reprend l'instrument de sa rangée.
+function applyRowInstruments(){
+  for(let r=1; r<=ROWS; r++){
+    const instr = rowInstrumentOf(String(r));
+    if(!instr) continue;
+    for(let c=1; c<=COLS; c++){
+      const cell = grid[keyOf(r,c)];
+      if(cell && !cell.removed && !cell.name && !cell.instrument) cell.instrument = instr;
+    }
   }
 }
 
