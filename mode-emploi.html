@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mode d'emploi Klé la Mass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --night:#180F3B;
+  --night2:#241857;
+  --line:#3B2C7A;
+  --ink:#FFF8E7;
+  --ink2:#C9BFEA;
+  --red:#F0364B;
+  --yellow:#FFC61A;
+  --orange:#FF7A00;
+  --fuchsia:#F0189A;
+  --teal:#12C2A8;
+  --grey:#7E7699;
+  --i-ba:#2196D8;--i-cb:#8B4FD1;--i-tc:#E8352B;--i-ko:#FFC93C;--i-cc:#1DBE79;--i-sy:#FF8C3D;--i-cl:#FF4FA3;--i-lock:#5A5470;
+  --display:'Bowlby One','Arial Black',Impact,sans-serif;
+  --body:'Nunito','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;margin:0;padding-inline:16px;padding-block:0 56px}
+.wrap{max-width:760px;margin-inline:auto}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.1;text-wrap:balance;margin:0}
+p{margin:0}
+a{color:var(--yellow)}
+.flag{display:flex;height:8px;margin-inline:-16px}
+.flag i{flex:1}
+header.top{padding-block:36px 28px;display:flex;flex-direction:column;gap:14px}
+.kicker{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow);font-weight:800}
+h1{font-size:clamp(40px,11vw,68px);color:var(--yellow);text-shadow:3px 3px 0 var(--red)}
+h1 span{display:block;font-size:.55em;color:var(--ink);text-shadow:3px 3px 0 var(--fuchsia);margin-top:6px}
+.lead{color:var(--ink2);max-width:52ch}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.tabs a{font-weight:800;text-decoration:none;color:var(--ink);border:2px solid var(--line);padding:8px 14px;border-radius:999px;font-size:14px}
+.tabs a:hover,.tabs a:focus-visible{border-color:var(--yellow);outline:none}
+.link-box{background:var(--night2);border:2px dashed var(--yellow);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.link-box b{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--yellow)}
+.link-box code{font-size:14px;word-break:break-all;color:var(--ink)}
+section.part{padding-block:34px 6px}
+.part-title{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.part-title h2{font-size:clamp(26px,7vw,38px)}
+.part-title .bar{flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--red),var(--orange),var(--yellow),var(--teal),var(--fuchsia))}
+.step{display:grid;grid-template-columns:1fr;gap:14px;padding-block:22px;border-top:2px solid var(--line)}
+.step:first-of-type{border-top:0}
+.step .txt{display:flex;flex-direction:column;gap:8px}
+.step h3{font-size:22px;color:var(--ink)}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--yellow);color:var(--night);font-family:var(--display);font-size:16px;flex:none}
+.step h3{display:flex;gap:12px;align-items:center}
+.step p{color:var(--ink2)}
+.step p b{color:var(--ink)}
+.tip{background:var(--night2);border-left:5px solid var(--teal);border-radius:8px;padding:10px 14px;color:var(--ink);font-size:15px}
+.warn{background:var(--night2);border-left:5px solid var(--orange);border-radius:8px;padding:10px 14px;color:var(--ink);font-size:15px}
+@media(min-width:680px){
+  .step{grid-template-columns:1fr 280px;align-items:center;gap:28px}
+  .step.flip{grid-template-columns:280px 1fr}
+  .step.flip .txt{order:2}
+}
+/* écrans illustrés */
+.phone{width:100%;max-width:280px;margin-inline:auto;background:#0F0929;border:3px solid var(--line);border-radius:26px;padding:14px 12px 16px;display:flex;flex-direction:column;gap:10px;position:relative;box-shadow:0 10px 0 rgba(0,0,0,.25)}
+.phone .notch{width:60px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 4px}
+.m-title{font-family:var(--display);color:var(--yellow);font-size:20px;text-align:center;line-height:1}
+.m-title small{display:block;color:var(--ink);font-size:12px;margin-top:3px}
+.m-field{background:var(--night2);border:2px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;color:var(--ink2)}
+.m-field.hl{border-color:var(--yellow);color:var(--ink)}
+.m-field small{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);font-weight:800}
+.m-btn{background:var(--red);color:#fff;font-weight:800;text-align:center;border-radius:10px;padding:9px;font-size:14px}
+.m-btn.y{background:var(--yellow);color:var(--night)}
+.m-btn.g{background:transparent;border:2px solid var(--line);color:var(--ink)}
+.grid{display:flex;flex-direction:column;gap:6px}
+.rowlab{font-size:10px;font-weight:800;text-align:center;letter-spacing:.1em;text-transform:uppercase}
+.row{display:grid;grid-template-columns:22px repeat(5,1fr);align-items:center;gap:3px}
+.row .n{font-size:11px;color:var(--grey);font-weight:800;text-align:center}
+.seat{position:relative;aspect-ratio:1;display:block}
+.seat svg{width:100%;height:100%;display:block}
+.seat .tag{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);font-size:8px;font-weight:800;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.6)}
+.seat.taken svg{filter:saturate(.45) brightness(.7)}
+.seat.mine svg{filter:drop-shadow(0 0 4px var(--yellow))}
+.seat.arrow::after{content:"";position:absolute;inset:-3px;border:2px dashed var(--yellow);border-radius:50%}
+.bubble{position:relative;background:#fff;color:#20153f;border-radius:12px;padding:10px 12px;font-size:12px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 0 rgba(0,0,0,.3)}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-8px;margin-left:-8px;border:8px solid transparent;border-bottom:0;border-top-color:#fff}
+.bubble .sel{border:1.5px solid #bdb2e6;border-radius:7px;padding:5px 8px;font-size:12px;display:flex;justify-content:space-between}
+.bubble .bt{background:var(--red);color:#fff;font-weight:800;text-align:center;border-radius:7px;padding:6px}
+.bubble .bt.l{background:#20153f}
+.bubble .who{display:flex;gap:8px;align-items:center}
+.bubble .ph{width:34px;height:34px;border-radius:50%;background:var(--teal);border:3px solid var(--orange);flex:none}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 12px;margin-top:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink2)}
+.legend i{width:14px;height:14px;border-radius:50%;display:inline-block}
+.qr{width:120px;height:120px;margin-inline:auto;background:#fff;border-radius:10px;padding:8px}
+.qr svg{width:100%;height:100%;display:block}
+.faq{display:flex;flex-direction:column;gap:10px}
+.faq details{background:var(--night2);border:2px solid var(--line);border-radius:12px;padding:12px 16px}
+.faq summary{font-weight:800;cursor:pointer}
+.faq summary:focus-visible{outline:2px solid var(--yellow);outline-offset:4px}
+.faq details p{margin-top:8px;color:var(--ink2)}
+.org-list{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:680px){.org-list{grid-template-columns:1fr 1fr}}
+.org-card{background:var(--night2);border:2px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.org-card h3{font-size:17px;color:var(--yellow)}
+.org-card p{font-size:15px;color:var(--ink2)}
+footer{margin-top:40px;color:var(--grey);font-size:13px;text-align:center}
+@media (prefers-reduced-motion:no-preference){.tabs a{transition:border-color .15s}}
+</style>
+</head>
+<body>
+
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="sil" viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="currentColor"/><circle cx="20" cy="13" r="7.5" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<div class="flag"><i style="background:var(--red)"></i><i style="background:var(--orange)"></i><i style="background:var(--yellow)"></i><i style="background:var(--teal)"></i><i style="background:var(--fuchsia)"></i></div>
+
+<div class="wrap">
+<header class="top">
+  <div class="kicker">Défilé 2027 · Mode d'emploi musiciens</div>
+  <h1>KLÉ LA MASS<span>MIZISYEN</span></h1>
+  <p class="lead">Cette appli te permet de choisir toi-même ta place dans la formation du défilé : 5 musiciens par rangée, chacun sa case. Ce guide t'explique tout, écran par écran.</p>
+  <div class="link-box">
+    <b>Adresse de l'appli</b>
+    <a href="https://opportunity971.github.io/verification-kle-la/formation-defile.html"><code>opportunity971.github.io/verification-kle-la/formation-defile.html</code></a>
+  </div>
+  <nav class="tabs" aria-label="Sommaire">
+    <a href="#musicien">Pas à pas</a>
+    <a href="#faq">Questions fréquentes</a>
+  </nav>
+</header>
+
+<!-- ===================== MUSICIEN ===================== -->
+<section class="part" id="musicien">
+  <div class="part-title"><h2>Pas à pas</h2><div class="bar"></div></div>
+
+  <div class="step">
+    <div class="txt">
+      <h3><span class="badge">1</span>Te connecter</h3>
+      <p>Ouvre l'adresse de l'appli sur ton téléphone ou ton ordinateur. Sur l'écran d'entrée, tape ton <b>nom complet</b> tel qu'il est sur la liste des musiciens, puis ton <b>code secret à 4 chiffres</b>.</p>
+      <p>Ton code est personnel : ne le prête pas.</p>
+      <div class="tip">Dès les premières lettres, ton nom apparaît en suggestion. Touche-le pour le choisir.</div>
+    </div>
+    <div class="phone" role="img" aria-label="Écran de connexion avec un champ nom, un champ code et un bouton Entrer">
+      <div class="notch"></div>
+      <div class="m-title">KLÉ LA MASS<small>MIZISYEN</small></div>
+      <div class="m-field hl"><small>Nom complet</small>Jean Dupont</div>
+      <div class="m-field hl"><small>Code à 4 chiffres</small>● ● ● ●</div>
+      <div class="m-btn">Entrer</div>
+    </div>
+  </div>
+
+  <div class="step flip">
+    <div class="txt">
+      <h3><span class="badge">2</span>Lire le plan</h3>
+      <p>Chaque ligne est une rangée du défilé, numérotée à gauche. Chaque silhouette vue de dessus est une place. La couleur montre l'instrument.</p>
+      <div class="legend" aria-label="Légende des couleurs">
+        <span><i style="background:var(--i-ba)"></i>Basse (BA)</span>
+        <span><i style="background:var(--i-cb)"></i>Contrebasse (CB)</span>
+        <span><i style="background:var(--i-tc)"></i>Tambours chan (TC)</span>
+        <span><i style="background:var(--i-ko)"></i>Konk (KO)</span>
+        <span><i style="background:var(--i-cc)"></i>Chacha (CC)</span>
+        <span><i style="background:var(--i-sy)"></i>Siyak (SY)</span>
+        <span><i style="background:var(--i-cl)"></i>Clave (CL)</span>
+        <span><i style="background:var(--i-lock)"></i>Place bloquée 🔒</span>
+      </div>
+      <p>Une silhouette <b>plus sombre et grisée</b> est déjà prise. Une silhouette <b>vive</b> est libre. Sur une place prise, la photo du musicien apparaît dans la tête.</p>
+      <div class="tip">Pour zoomer, utilise le curseur de zoom, les boutons − et +, ou pince l'écran avec deux doigts.</div>
+    </div>
+    <div class="phone" role="img" aria-label="Extrait du plan avec trois rangées de cinq places, certaines libres, certaines prises">
+      <div class="notch"></div>
+      <div class="grid">
+        <div class="rowlab" style="color:var(--i-sy)">Siyak</div>
+        <div class="row"><span class="n">1</span>
+          <span class="seat taken" style="color:var(--i-sy)"><svg><use href="#sil"/></svg><span class="tag">SY</span></span>
+          <span class="seat" style="color:var(--i-sy)"><svg><use href="#sil"/></svg><span class="tag">SY</span></span>
+          <span class="seat taken" style="color:var(--i-sy)"><svg><use href="#sil"/></svg><span class="tag">SY</span></span>
+          <span class="seat" style="color:var(--i-sy)"><svg><use href="#sil"/></svg><span class="tag">SY</span></span>
+          <span class="seat" style="color:var(--i-sy)"><svg><use href="#sil"/></svg><span class="tag">SY</span></span></div>
+        <div class="row"><span class="n">2</span>
+          <span class="seat" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+          <span class="seat taken" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+          <span class="seat taken" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+          <span class="seat" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+          <span class="seat" style="color:var(--i-lock)"><svg><use href="#sil"/></svg><span class="tag">🔒</span></span></div>
+        <div class="rowlab" style="color:var(--ink2)">Instrument au choix</div>
+        <div class="row"><span class="n">3</span>
+          <span class="seat" style="color:#9d93c6"><svg><use href="#sil"/></svg></span>
+          <span class="seat" style="color:#9d93c6"><svg><use href="#sil"/></svg></span>
+          <span class="seat taken" style="color:var(--i-cl)"><svg><use href="#sil"/></svg><span class="tag">CL</span></span>
+          <span class="seat" style="color:#9d93c6"><svg><use href="#sil"/></svg></span>
+          <span class="seat" style="color:#9d93c6"><svg><use href="#sil"/></svg></span></div>
+      </div>
+      <div class="m-btn g" style="font-size:12px;padding:6px">Zoom  −  ▬▬●▬▬  +</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="txt">
+      <h3><span class="badge">3</span>Réserver ta place</h3>
+      <p>Touche une silhouette libre. Une <b>bulle</b> s'ouvre juste au-dessus.</p>
+      <p>Si la rangée a un instrument imposé par les organisateurs, il est déjà choisi pour toi. Sinon, un <b>menu</b> te laisse choisir ton instrument. Touche ensuite <b>Réserver</b>.</p>
+      <p>Ta silhouette prend la couleur de ton instrument et ta photo apparaît dans la tête.</p>
+      <div class="warn">Tu ne peux réserver <b>qu'une seule place</b>. Pour en changer, libère d'abord la première.</div>
+    </div>
+    <div class="phone" role="img" aria-label="Bulle avec un menu d'instrument et un bouton Réserver au-dessus d'une place libre">
+      <div class="notch"></div>
+      <div class="bubble">
+        <b>Rangée 3 · place libre</b>
+        <div class="sel"><span>Choisis ton instrument</span><span>▾</span></div>
+        <div class="bt">Réserver</div>
+      </div>
+      <div class="row" style="margin-top:10px"><span class="n">3</span>
+        <span class="seat taken" style="color:var(--i-cl)"><svg><use href="#sil"/></svg><span class="tag">CL</span></span>
+        <span class="seat" style="color:#9d93c6"><svg><use href="#sil"/></svg></span>
+        <span class="seat arrow" style="color:#9d93c6"><svg><use href="#sil"/></svg></span>
+        <span class="seat" style="color:#9d93c6"><svg><use href="#sil"/></svg></span>
+        <span class="seat" style="color:#9d93c6"><svg><use href="#sil"/></svg></span></div>
+    </div>
+  </div>
+
+  <div class="step flip">
+    <div class="txt">
+      <h3><span class="badge">4</span>Voir ou libérer ta place</h3>
+      <p>Ta place est entourée d'une lueur jaune. Touche-la : la bulle affiche ton nom, ton instrument, et <b>Libérer ma place</b>.</p>
+      <p>Quand tu libères, la place redevient disponible pour les autres. Si la rangée avait un instrument imposé, il reste affiché.</p>
+      <p>Touche la place d'un autre musicien : tu vois son nom et son instrument, sans pouvoir la modifier.</p>
+    </div>
+    <div class="phone" role="img" aria-label="Bulle avec photo, nom, instrument et bouton Libérer ma place">
+      <div class="notch"></div>
+      <div class="bubble">
+        <div class="who"><div class="ph"></div><div><b>Jean Dupont</b><br>Tambour chan</div></div>
+        <div class="bt l">Libérer ma place</div>
+      </div>
+      <div class="row" style="margin-top:10px"><span class="n">2</span>
+        <span class="seat" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+        <span class="seat taken mine" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+        <span class="seat taken" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+        <span class="seat" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span>
+        <span class="seat" style="color:var(--i-tc)"><svg><use href="#sil"/></svg><span class="tag">TC</span></span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="txt">
+      <h3><span class="badge">5</span>Pointer ta présence en répétition</h3>
+      <p>Pendant la répétition, un organisateur affiche un <b>QR code</b> sur son écran. Scanne-le avec ton téléphone : ta présence est enregistrée.</p>
+      <p>Le QR change régulièrement. Un code photographié ou envoyé à un absent ne sert donc à rien : il faut être sur place.</p>
+      <p>Le nombre de répétitions auxquelles tu as assisté apparaît dans la bulle de ta propre place. Les autres musiciens ne le voient pas.</p>
+    </div>
+    <div class="phone" role="img" aria-label="QR code à scanner">
+      <div class="notch"></div>
+      <div class="m-title" style="font-size:16px">Répétition du jour<small>Scanne pour pointer</small></div>
+      <div class="qr">
+        <svg viewBox="0 0 21 21" shape-rendering="crispEdges">
+          <rect width="21" height="21" fill="#fff"/>
+          <g fill="#180F3B">
+            <path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0z"/>
+          </g>
+          <g fill="#fff"><rect x="1" y="1" width="5" height="5"/><rect x="15" y="1" width="5" height="5"/><rect x="1" y="15" width="5" height="5"/></g>
+          <g fill="#180F3B"><rect x="2" y="2" width="3" height="3"/><rect x="16" y="2" width="3" height="3"/><rect x="2" y="16" width="3" height="3"/>
+            <rect x="9" y="1" width="2" height="2"/><rect x="9" y="5" width="3" height="2"/><rect x="8" y="9" width="2" height="2"/><rect x="12" y="9" width="3" height="2"/><rect x="16" y="9" width="2" height="3"/><rect x="19" y="10" width="2" height="2"/><rect x="9" y="13" width="3" height="2"/><rect x="14" y="14" width="2" height="3"/><rect x="17" y="16" width="3" height="2"/><rect x="10" y="17" width="2" height="3"/><rect x="14" y="19" width="3" height="2"/><rect x="8" y="12" width="1" height="1"/><rect x="0" y="9" width="2" height="2"/><rect x="4" y="10" width="3" height="2"/></g>
+        </svg>
+      </div>
+      <div class="m-btn y">✔ Présence enregistrée</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="part" id="faq">
+  <div class="part-title"><h2>Questions fréquentes</h2><div class="bar"></div></div>
+  <div class="faq">
+    <details><summary>J'ai perdu ou oublié mon code</summary><p>Demande à un organisateur : il peut te retrouver ton code.</p></details>
+    <details><summary>Mon nom n'est pas accepté</summary><p>Écris ton nom complet comme sur la liste, avec les accents. Utilise la suggestion qui apparaît en tapant. Si ton nom n'apparaît pas, tu n'es peut-être pas encore sur la liste : préviens un organisateur.</p></details>
+    <details><summary>Je vois un cadenas sur une place</summary><p>La place est bloquée par les organisateurs. Elle n'est pas réservable.</p></details>
+    <details><summary>Je veux changer de place</summary><p>Touche ta place, choisis <b>Libérer ma place</b>, puis réserve la nouvelle.</p></details>
+    <details><summary>La bulle ne s'ouvre pas ou se ferme toute seule</summary><p>Recharge la page et réessaie. Si le problème continue, préviens un organisateur en précisant ton téléphone et ton navigateur.</p></details>
+    <details><summary>Ma place réservée a disparu</summary><p>Un organisateur a pu supprimer la rangée ou modifier la formation. Reviens sur le plan et choisis une nouvelle place.</p></details>
+  </div>
+</section>
+
+<footer>Klé la Mass · Mizisyen · Défilé 2027</footer>
+</div>
+
+</body>
+</html>
