@@ -268,6 +268,68 @@
   .add-row{ display:flex; gap:6px; margin-top:10px; }
   .add-row input{ flex:1; }
   .add-row button{ width:auto; padding:9px 14px; margin-top:0; }
+
+  /* ---------- Répétitions : pointage par QR, panneau organisateur, compteurs ---------- */
+  .seat-popup .seat-popup-rep{ color: var(--vert); font-weight:700; margin:0; font-size:0.8rem; }
+  .seat-popup .seat-popup-rep:empty{ display:none; }
+
+  #access-gate .checkin-banner{ color: var(--jaune); font-weight:700; font-size:0.82rem; margin:0 0 14px 0; }
+  .gate-remember{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; color: var(--slate); font-size:0.78rem; cursor:pointer; }
+  .gate-remember input{ accent-color: var(--jaune); width:16px; height:16px; margin:0; }
+
+  .rep-input{
+    width:100%; background: var(--panel); border:2px solid rgba(255,246,229,0.12);
+    color: var(--creme); padding: 9px 10px; border-radius:10px; font-family: inherit; font-size:0.9rem;
+    color-scheme: dark;
+  }
+  .rep-input:focus{ outline:2px solid var(--jaune); border-color: var(--jaune); }
+  .rep-live-title{ margin:0 0 6px 0; font-family:'Baloo 2',sans-serif; font-weight:700; color: var(--jaune); font-size:1rem; }
+  .rep-live-badge{ display:inline-block; background: var(--vert); color: var(--nuit-deep); font-size:0.64rem; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:6px; vertical-align:middle; letter-spacing:0.04em; }
+  .rep-empty{ color: var(--slate); font-size:0.8rem; margin:6px 0; line-height:1.5; }
+  .rep-list{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+  .rep-item{ display:flex; align-items:center; gap:8px; background: rgba(255,246,229,0.05); border-radius:8px; padding:0 10px 0 0; }
+  .rep-item.rep-item-open{ box-shadow: inset 3px 0 0 var(--vert); }
+  .rep-item-main{
+    flex:1; text-align:left; background:none; border:none; color: var(--creme); cursor:pointer;
+    font-family:inherit; padding:7px 10px; display:flex; flex-direction:column; gap:1px; min-width:0;
+  }
+  .rep-item-date{ font-weight:700; font-size:0.82rem; }
+  .rep-item-label{ font-size:0.74rem; color: var(--slate); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rep-item-label em{ color: var(--vert); font-style:normal; font-weight:800; }
+  .rep-item-count{ font-family:'Baloo 2',sans-serif; font-weight:800; color: var(--jaune); font-size:1.05rem; }
+  .rep-count-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; background: rgba(255,246,229,0.05); border-radius:8px; padding:6px 10px; font-size:0.82rem; }
+  .rep-count-row b{ color: var(--jaune); font-family:'Baloo 2',sans-serif; }
+  .rep-count-row small{ color: var(--slate); margin-left:4px; }
+  .rep-count-row .rep-x{ background:none; border:none; color:#FF9B94; cursor:pointer; font-size:0.9rem; padding:0 4px; }
+  #rep-detail{ margin-top:12px; padding:12px; background: var(--panel); border:2px solid rgba(255,201,60,0.18); border-radius:14px; }
+  .rep-detail-title{ margin:0 0 8px 0; font-weight:700; font-size:0.85rem; color: var(--jaune); line-height:1.4; }
+  #rep-block .stat-row{ margin-top:6px; }
+
+  .qr-overlay{
+    position:fixed; inset:0; z-index:120; background: var(--nuit-deep);
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; padding:20px; text-align:center; overflow-y:auto;
+  }
+  .qr-overlay h2{ margin:0; font-size:1.25rem; color: var(--jaune); }
+  .qr-box{ background:#fff; border-radius:16px; padding:8px; width:min(72vmin, 520px); }
+  .qr-box svg{ width:100%; height:auto; display:block; }
+  .qr-timer{ height:6px; width:min(72vmin, 520px); background: rgba(255,246,229,0.15); border-radius:3px; overflow:hidden; }
+  .qr-timer i{ display:block; height:100%; width:0; background: var(--jaune); }
+  .qr-count{ margin:0; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:1.6rem; color: var(--vert); }
+  .qr-hint{ margin:0; color: var(--slate); font-size:0.85rem; max-width:420px; line-height:1.5; }
+  .qr-close{ position:absolute; top:14px; right:18px; font-size:0.9rem; }
+
+  .checkin-overlay{
+    position:fixed; inset:0; z-index:130; background: rgba(12,9,24,0.92);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .checkin-card{
+    background: var(--panel); border:2px solid rgba(255,201,60,0.35); border-radius:18px;
+    padding:28px 24px; max-width:340px; width:100%; text-align:center;
+  }
+  .checkin-icon{ font-size:2.6rem; line-height:1; margin-bottom:8px; }
+  .checkin-card h2{ margin:0 0 8px 0; font-size:1.25rem; color: var(--jaune); }
+  .checkin-card p{ margin:0 0 6px 0; color: var(--creme); font-size:0.9rem; line-height:1.5; white-space:pre-line; }
 </style>
 </head>
 <body>
@@ -276,6 +338,7 @@
   <div class="card">
     <h1>KLÉ LA MASS<span class="title-sub">MIZISYEN</span></h1>
     <p class="parade-date-banner" id="gate-parade-date"></p>
+    <p class="checkin-banner" id="gate-checkin-banner" style="display:none;"></p>
     <div id="gate-name-mode">
       <p>Entre ton nom complet et ton code personnel pour accéder au plan.</p>
       <input type="text" id="gate-name" placeholder="Ton nom complet" autocomplete="off">
@@ -285,6 +348,7 @@
            ci-dessus étant conservé vide mais non utilisé : le support de
            <datalist> est trop inégal sur Android Chrome (souvent invisible). -->
       <input type="text" id="gate-code" placeholder="Ton code (4 chiffres)" autocomplete="off" inputmode="numeric" maxlength="4" style="margin-top:8px;">
+      <label class="gate-remember"><input type="checkbox" id="gate-remember" checked> Se souvenir de moi sur cet appareil</label>
       <button class="btn btn-save" id="gate-submit">Entrer</button>
       <p class="gate-error" id="gate-error"></p>
       <button class="link-btn switch-link" id="gate-orga-link">Je suis l'organisateur</button>
@@ -318,6 +382,34 @@
       <button class="btn btn-save" id="paradedate-save-btn">Enregistrer la date</button>
     </div>
 
+    <div id="rep-block" style="display:none;">
+      <p class="panel-title">RÉPÉTITIONS</p>
+      <div id="rep-open-form">
+        <input type="text" id="rep-label-input" placeholder="Libellé (optionnel) ex. Répétition générale" maxlength="80" autocomplete="off">
+        <input type="date" id="rep-date-input" class="rep-input" style="margin-top:8px;">
+        <button class="btn btn-save" id="rep-open-btn">▶ Ouvrir une répétition</button>
+      </div>
+      <div id="rep-live" style="display:none;">
+        <p class="rep-live-title"><span id="rep-live-title"></span><span class="rep-live-badge">EN COURS</span></p>
+        <div class="stat-row"><span><span class="num" id="rep-live-count">0</span> <span class="label">présent(s) en ce moment</span></span></div>
+        <button class="btn btn-save" id="rep-show-qr-btn">📺 Afficher le QR (plein écran)</button>
+        <button class="btn btn-clear" id="rep-close-btn">■ Clôturer la répétition</button>
+      </div>
+
+      <p class="panel-title" style="margin-top:18px;">HISTORIQUE (touche une ligne pour le détail)</p>
+      <div class="rep-list" id="rep-sessions-list"><p class="rep-empty">Chargement…</p></div>
+      <div id="rep-detail" style="display:none;"></div>
+
+      <p class="panel-title" style="margin-top:18px;">COMPTEURS PAR MUSICIEN <span id="rep-counts-total"></span></p>
+      <select id="rep-sort-select">
+        <option value="name">Trier par nom</option>
+        <option value="asc">Les moins présents d'abord</option>
+        <option value="desc">Les plus présents d'abord</option>
+      </select>
+      <input type="text" id="rep-search-input" placeholder="Rechercher un musicien…" autocomplete="off" style="margin-top:8px;">
+      <div class="rep-list" id="rep-counts-list" style="margin-top:8px;"></div>
+    </div>
+
     <div id="orga-inline-login" style="display:none;">
       <input type="password" id="orga-inline-pass" placeholder="Mot de passe organisateur">
       <button class="btn btn-save" id="orga-inline-submit">Entrer</button>
@@ -329,6 +421,7 @@
     <div id="stats-block" style="display:none;">
       <div class="stat-row"><span><span class="num" id="stat-filled">0</span> <span class="label">/ <span id="stat-total">200</span> réservées</span></span></div>
       <div class="stat-row"><span><span class="num" id="stat-blocked">0</span> <span class="label">bloquées</span></span></div>
+      <div class="stat-row" id="myrep-row" style="display:none;"><span><span class="num" id="myrep-num">0</span> <span class="label">/ <span id="myrep-total">0</span> répétitions suivies</span></span></div>
       <div id="instrument-stats" class="instrument-stats"></div>
     </div>
 
@@ -438,7 +531,274 @@
 <div class="toast" id="toast"></div>
 <div class="seat-popup" id="seat-popup" style="display:none;"></div>
 
+<div class="qr-overlay" id="qr-overlay">
+  <button class="link-btn qr-close" id="qr-close-btn">✕ Fermer</button>
+  <h2 id="qr-title"></h2>
+  <div class="qr-box" id="qr-box"></div>
+  <div class="qr-timer"><i id="qr-timer-bar"></i></div>
+  <p class="qr-count"><span id="qr-count">0</span> présent(s)</p>
+  <p class="qr-hint">Scanne ce QR code avec l'appareil photo de ton téléphone pour enregistrer ta présence. Il se renouvelle toutes les 30 secondes.</p>
+</div>
+
+<div class="checkin-overlay" id="checkin-overlay">
+  <div class="checkin-card">
+    <div class="checkin-icon" id="checkin-icon"></div>
+    <h2 id="checkin-title"></h2>
+    <p id="checkin-text"></p>
+    <button class="btn btn-save" id="checkin-primary-btn"></button>
+    <button class="btn btn-secondary" id="checkin-secondary-btn" style="display:none;"></button>
+  </div>
+</div>
+
 <script>
+// ------------------------------------------------------------
+// Mini générateur de QR code (mode octets, correction d'erreur M,
+// versions 1 à 10 — jusqu'à 213 caractères). Écrit pour cette page afin
+// de ne dépendre d'aucune bibliothèque ni d'aucun site externe.
+// Renvoie la matrice (tableau de lignes de booléens, true = module noir).
+// ------------------------------------------------------------
+var QR = (function(){
+  // Corps de Galois GF(256), polynôme 0x11D
+  var EXP = new Array(512), LOG = new Array(256);
+  (function(){
+    var x = 1;
+    for(var i = 0; i < 255; i++){
+      EXP[i] = x; LOG[x] = i;
+      x <<= 1; if(x & 0x100) x ^= 0x11D;
+    }
+    for(var j = 255; j < 512; j++) EXP[j] = EXP[j - 255];
+  })();
+  function gfMul(a, b){ return (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]]; }
+
+  function rsGenerator(n){
+    var poly = [1];
+    for(var i = 0; i < n; i++){
+      var next = new Array(poly.length + 1).fill(0);
+      for(var j = 0; j < poly.length; j++){
+        next[j] ^= poly[j];
+        next[j + 1] ^= gfMul(poly[j], EXP[i]);
+      }
+      poly = next;
+    }
+    return poly;
+  }
+  function rsRemainder(data, n){
+    var gen = rsGenerator(n);
+    var msg = data.concat(new Array(n).fill(0));
+    for(var i = 0; i < data.length; i++){
+      var coef = msg[i];
+      if(coef !== 0){
+        for(var j = 0; j < gen.length; j++) msg[i + j] ^= gfMul(gen[j], coef);
+      }
+    }
+    return msg.slice(data.length);
+  }
+
+  // Niveau M : { mots de correction par bloc, groupes [nb blocs, mots de données par bloc] }
+  var EC_M = [null,
+    { ec:10, g:[[1,16]] }, { ec:16, g:[[1,28]] }, { ec:26, g:[[1,44]] }, { ec:18, g:[[2,32]] },
+    { ec:24, g:[[2,43]] }, { ec:16, g:[[4,27]] }, { ec:18, g:[[4,31]] }, { ec:22, g:[[2,38],[2,39]] },
+    { ec:22, g:[[3,36],[2,37]] }, { ec:26, g:[[4,43],[1,44]] }
+  ];
+  var ALIGN = [null, [], [6,18], [6,22], [6,26], [6,30], [6,34], [6,22,38], [6,24,42], [6,26,46], [6,28,50]];
+
+  function dataCapacity(v){
+    return EC_M[v].g.reduce(function(s, g){ return s + g[0] * g[1]; }, 0);
+  }
+
+  function encode(text){
+    var bytes = Array.prototype.slice.call(new TextEncoder().encode(text));
+    var ver = 0;
+    for(var v = 1; v <= 10; v++){
+      var ccBits = v <= 9 ? 8 : 16;
+      if(Math.ceil((4 + ccBits + bytes.length * 8) / 8) <= dataCapacity(v)){ ver = v; break; }
+    }
+    if(!ver) throw new Error('Texte trop long pour le QR code');
+
+    // Flux de bits : mode octets + longueur + données
+    var bits = [];
+    function put(val, len){ for(var i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); }
+    put(4, 4);
+    put(bytes.length, ver <= 9 ? 8 : 16);
+    bytes.forEach(function(b){ put(b, 8); });
+    var capBits = dataCapacity(ver) * 8;
+    put(0, Math.min(4, capBits - bits.length));
+    while(bits.length % 8) bits.push(0);
+    var codewords = [];
+    for(var i = 0; i < bits.length; i += 8){
+      var byte = 0;
+      for(var k = 0; k < 8; k++) byte = (byte << 1) | bits[i + k];
+      codewords.push(byte);
+    }
+    for(var pad = 0xEC; codewords.length < dataCapacity(ver); pad ^= 0xEC ^ 0x11) codewords.push(pad);
+
+    // Découpage en blocs, correction d'erreur, entrelacement
+    var info = EC_M[ver], blocks = [], pos = 0;
+    info.g.forEach(function(g){
+      for(var b = 0; b < g[0]; b++){
+        var dat = codewords.slice(pos, pos + g[1]);
+        pos += g[1];
+        blocks.push({ dat: dat, ecc: rsRemainder(dat, info.ec) });
+      }
+    });
+    var final = [];
+    var maxLen = Math.max.apply(null, blocks.map(function(b){ return b.dat.length; }));
+    for(var d = 0; d < maxLen; d++) blocks.forEach(function(b){ if(d < b.dat.length) final.push(b.dat[d]); });
+    for(var e = 0; e < info.ec; e++) blocks.forEach(function(b){ final.push(b.ecc[e]); });
+
+    return { ver: ver, data: final };
+  }
+
+  function build(text){
+    var enc = encode(text), ver = enc.ver, size = 17 + 4 * ver;
+    var modules = [], isFn = [];
+    for(var y = 0; y < size; y++){ modules.push(new Array(size).fill(false)); isFn.push(new Array(size).fill(false)); }
+    function setFn(x, y, dark){
+      if(x < 0 || y < 0 || x >= size || y >= size) return;
+      modules[y][x] = dark; isFn[y][x] = true;
+    }
+    function finder(cx, cy){
+      for(var dy = -4; dy <= 4; dy++) for(var dx = -4; dx <= 4; dx++){
+        var dist = Math.max(Math.abs(dx), Math.abs(dy));
+        setFn(cx + dx, cy + dy, dist !== 2 && dist !== 4);
+      }
+    }
+    function alignment(cx, cy){
+      for(var dy = -2; dy <= 2; dy++) for(var dx = -2; dx <= 2; dx++)
+        setFn(cx + dx, cy + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }
+    function bit(x, i){ return ((x >>> i) & 1) !== 0; }
+
+    function drawFormat(mask){
+      var d = (0 << 3) | mask; // niveau M = 00
+      var rem = d;
+      for(var i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+      var fb = ((d << 10) | rem) ^ 0x5412;
+      for(var a = 0; a <= 5; a++) setFn(8, a, bit(fb, a));
+      setFn(8, 7, bit(fb, 6)); setFn(8, 8, bit(fb, 7)); setFn(7, 8, bit(fb, 8));
+      for(var b = 9; b < 15; b++) setFn(14 - b, 8, bit(fb, b));
+      for(var c = 0; c < 8; c++) setFn(size - 1 - c, 8, bit(fb, c));
+      for(var e = 8; e < 15; e++) setFn(8, size - 15 + e, bit(fb, e));
+      setFn(8, size - 8, true);
+    }
+
+    // Motifs de fonction
+    for(var i = 0; i < size; i++){ setFn(6, i, i % 2 === 0); setFn(i, 6, i % 2 === 0); }
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+    var ap = ALIGN[ver], n = ap.length;
+    for(var ai = 0; ai < n; ai++) for(var aj = 0; aj < n; aj++){
+      if((ai === 0 && aj === 0) || (ai === 0 && aj === n - 1) || (ai === n - 1 && aj === 0)) continue;
+      alignment(ap[ai], ap[aj]);
+    }
+    drawFormat(0);
+    if(ver >= 7){
+      var rem = ver;
+      for(var r = 0; r < 12; r++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+      var vb = (ver << 12) | rem;
+      for(var q = 0; q < 18; q++){
+        var col = bit(vb, q), a = size - 11 + (q % 3), b = Math.floor(q / 3);
+        setFn(a, b, col); setFn(b, a, col);
+      }
+    }
+
+    // Placement des données en zigzag
+    var idx = 0, total = enc.data.length * 8;
+    for(var right = size - 1; right >= 1; right -= 2){
+      if(right === 6) right = 5;
+      for(var vert = 0; vert < size; vert++){
+        for(var j = 0; j < 2; j++){
+          var x = right - j;
+          var upward = ((right + 1) & 2) === 0;
+          var yy = upward ? size - 1 - vert : vert;
+          if(!isFn[yy][x]){
+            modules[yy][x] = idx < total ? bit(enc.data[idx >>> 3], 7 - (idx & 7)) : false;
+            idx++;
+          }
+        }
+      }
+    }
+
+    // Masques
+    function maskCond(m, x, y){
+      switch(m){
+        case 0: return (x + y) % 2 === 0;
+        case 1: return y % 2 === 0;
+        case 2: return x % 3 === 0;
+        case 3: return (x + y) % 3 === 0;
+        case 4: return (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0;
+        case 5: return x * y % 2 + x * y % 3 === 0;
+        case 6: return (x * y % 2 + x * y % 3) % 2 === 0;
+        default: return ((x + y) % 2 + x * y % 3) % 2 === 0;
+      }
+    }
+    function applyMask(m){
+      for(var y = 0; y < size; y++) for(var x = 0; x < size; x++)
+        if(!isFn[y][x] && maskCond(m, x, y)) modules[y][x] = !modules[y][x];
+    }
+    function penalty(){
+      var score = 0, y, x, run, k;
+      for(var pass = 0; pass < 2; pass++){
+        for(var a = 0; a < size; a++){
+          run = 1;
+          var hist = [];
+          for(var b = 1; b <= size; b++){
+            var cur = b < size ? (pass === 0 ? modules[a][b] : modules[b][a]) : null;
+            var prev = pass === 0 ? modules[a][b - 1] : modules[b - 1][a];
+            if(b < size && cur === prev){ run++; }
+            else { if(run >= 5) score += 3 + (run - 5); hist.push(run); run = 1; }
+          }
+          // motif de type repère 1:1:3:1:1 (approximation à partir des séquences brutes)
+          var line = [];
+          for(var t = 0; t < size; t++) line.push((pass === 0 ? modules[a][t] : modules[t][a]) ? 1 : 0);
+          var s = line.join('');
+          var m1 = s.split('10111010000').length - 1, m2 = s.split('00001011101').length - 1;
+          score += 40 * (m1 + m2);
+        }
+      }
+      for(y = 0; y < size - 1; y++) for(x = 0; x < size - 1; x++){
+        var c = modules[y][x];
+        if(c === modules[y][x + 1] && c === modules[y + 1][x] && c === modules[y + 1][x + 1]) score += 3;
+      }
+      var dark = 0;
+      for(y = 0; y < size; y++) for(x = 0; x < size; x++) if(modules[y][x]) dark++;
+      k = Math.ceil(Math.abs(dark * 20 - size * size * 10) / (size * size)) - 1;
+      score += Math.max(0, k) * 10;
+      return score;
+    }
+
+    var bestMask = 0, bestScore = Infinity;
+    for(var m = 0; m < 8; m++){
+      applyMask(m); drawFormat(m);
+      var sc = penalty();
+      if(sc < bestScore){ bestScore = sc; bestMask = m; }
+      applyMask(m); // annule
+    }
+    applyMask(bestMask); drawFormat(bestMask);
+    return modules;
+  }
+
+  // Convertit la matrice en SVG (fond blanc + zone de silence de 4 modules)
+  function toSvg(text){
+    var mods = build(text), n = mods.length, q = 4, d = '';
+    for(var y = 0; y < n; y++){
+      var x = 0;
+      while(x < n){
+        if(mods[y][x]){
+          var start = x;
+          while(x < n && mods[y][x]) x++;
+          d += 'M' + (start + q) + ',' + (y + q) + 'h' + (x - start) + 'v1h-' + (x - start) + 'z';
+        } else x++;
+      }
+    }
+    var full = n + 2 * q;
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + full + ' ' + full + '" shape-rendering="crispEdges">' +
+      '<rect width="' + full + '" height="' + full + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+  }
+
+  return { matrix: build, toSvg: toSvg };
+})();
+
+
 const COLS = 5;
 let ROWS = 40; // valeur par défaut, écrasée dès le premier chargement par la valeur réelle du Google Sheet
 const API_URL = 'https://script.google.com/macros/s/AKfycbxPsziKBTl1xVIVGtFb5rbBY0HBHu0M4WVd-6oelWNGo6RdJ-BYVRiVNG0F1NQskRwW/exec';
@@ -1218,6 +1578,7 @@ function renderOrganizerSimplePopup(r, c, data){
       ${photoHtml}
       <p class="seat-popup-name">${data.name}</p>
       <p class="seat-popup-instr">${instrDisplay}</p>
+      ${orgaRepLine(data.name)}
     `;
   } else {
     const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Non attribué';
@@ -1266,6 +1627,7 @@ function renderOrganizerPopup(r, c, data){
 
   popup.innerHTML = `
     ${data.blocked ? '<p class="seat-popup-instr">🔒 Place actuellement bloquée</p>' : ''}
+    ${data.name ? orgaRepLine(data.name) : ''}
     <select id="popup-orga-instr" class="seat-popup-select">
       <option value="">— Non attribué —</option>
       <option value="basse" ${data.instrument==='basse'?'selected':''}>Basse</option>
@@ -1337,6 +1699,7 @@ function renderReleasePopup(r, c, data){
     ${photoHtml}
     <p class="seat-popup-name">${data.name} (toi)</p>
     <p class="seat-popup-instr">${instrDisplay} — réservée</p>
+    ${ownRepLine()}
     <button class="btn btn-clear seat-popup-btn" id="popup-release-btn">Libérer ma place</button>
   `;
   positionSeatPopup(r,c);
@@ -1651,8 +2014,23 @@ function goToGate(){
   document.getElementById('gate-code').value = '';
   document.getElementById('gate-error').textContent = '';
   document.getElementById('orga-inline-login').style.display = 'none';
+  // Répétitions : arrêt du suivi en direct et remise à zéro de l'état
+  stopRepLive();
+  repStats = null;
+  myRep = null;
+  repDetailId = null;
+  document.getElementById('rep-block').style.display = 'none';
+  document.getElementById('checkin-overlay').style.display = 'none';
+  updateMyRepDisplay();
+  // Identifiants mémorisés sur cet appareil : on pré-remplit l'écran de connexion
+  const saved = loadSavedLogin();
+  if(saved){
+    document.getElementById('gate-name').value = saved.name;
+    document.getElementById('gate-code').value = saved.code;
+  }
 }
-document.getElementById('btn-logout').addEventListener('click', goToGate);
+// "Quitter" = oublier aussi les identifiants mémorisés sur cet appareil
+document.getElementById('btn-logout').addEventListener('click', () => { forgetLogin(); goToGate(); });
 
 document.getElementById('btn-toggle-orga').addEventListener('click', () => {
   if(isOrganizer){
@@ -1687,6 +2065,10 @@ async function submitOrgaInline(){
       renderAllRowLabels();
       populateRowManageSelects();
       document.getElementById('rowmanage-block').style.display = 'block';
+      clearPendingCheckin();
+      document.getElementById('rep-block').style.display = 'block';
+      updateMyRepDisplay();
+      onOrganizerReady();
       showToast('Mode organisateur activé.');
     } else {
       document.getElementById('orga-inline-error').textContent = 'Mot de passe incorrect.';
@@ -1807,7 +2189,11 @@ async function tryNameEntry(){
     }
     currentUserName = result.name; // casse exacte renvoyée par le serveur
     currentUserCode = typedCode;
+    if(document.getElementById('gate-remember').checked) saveLogin(result.name, typedCode); else forgetLogin();
     openApp(false);
+    // Pointage en attente (arrivée par un QR de répétition) : on le valide maintenant ;
+    // sinon on récupère simplement le compteur de répétitions du musicien.
+    if(pendingCheckin) runCheckin(currentUserName, currentUserCode); else refreshMyCount();
   } catch(err){
     document.getElementById('gate-error').textContent = 'Erreur réseau, réessaie.';
   }
@@ -1849,6 +2235,9 @@ function openApp(asOrganizer){
     document.getElementById('reset-block').style.display = 'block';
     document.getElementById('rowmanage-block').style.display = 'block';
     populateRowLabelSelect();
+    clearPendingCheckin();
+    document.getElementById('rep-block').style.display = 'block';
+    onOrganizerReady();
   } else {
     document.getElementById('main-layout').classList.remove('organizer-view');
     document.getElementById('mode-badge').textContent = 'Mode musicien';
@@ -1859,7 +2248,9 @@ function openApp(asOrganizer){
     document.getElementById('rowlabel-block').style.display = 'none';
     document.getElementById('reset-block').style.display = 'none';
     document.getElementById('rowmanage-block').style.display = 'none';
+    document.getElementById('rep-block').style.display = 'none';
   }
+  updateMyRepDisplay();
   loadGrid();
 }
 
@@ -1927,6 +2318,485 @@ window.addEventListener('scroll', positionAutoDropdown, true);
 window.addEventListener('resize', positionAutoDropdown);
 
 // ------------------------------------------------------------
+// RÉPÉTITIONS : pointage par QR, compteurs, panneau organisateur
+// ------------------------------------------------------------
+const SAVED_LOGIN_KEY = 'klelamass_login_v1';
+const REP_POLL_MS = 8000;        // rafraîchissement du QR / des présents côté organisateur
+const REP_TOKEN_STEP = 30;       // doit correspondre à TOKEN_STEP_SEC dans Code.gs
+
+let pendingCheckin = null;   // { session, token } issu d'un QR scanné, pas encore validé
+let myRep = null;            // { count, total } : compteur du musicien connecté
+let repStats = null;         // { total, sessions, counts } : vue organisateur
+let repLive = null;          // répétition ouverte { id, date, label, count } (organisateur)
+let repPollTimer = null;
+let repPollTick = 0;
+let repDetailId = null;
+let qrOverlayOpen = false;
+let lastQrToken = '';
+let wakeLockHandle = null;
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+function plural(n, word){ return n + ' ' + word + (n > 1 ? 's' : ''); }
+function repCountPhrase(count, total){
+  if(!total) return '';
+  return '🥁 ' + plural(count, 'répétition') + ' sur ' + total;
+}
+function formatRepDate(iso){
+  if(!iso) return '';
+  const parts = String(iso).split('-');
+  if(parts.length !== 3) return String(iso);
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  if(isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
+}
+function localTodayISO(){
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+// ---- Identifiants mémorisés sur l'appareil (le scan du QR suffit ensuite) ----
+function loadSavedLogin(){
+  try {
+    const raw = localStorage.getItem(SAVED_LOGIN_KEY);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    if(o && o.name && o.code) return o;
+  } catch(err){}
+  return null;
+}
+function saveLogin(name, code){
+  try { localStorage.setItem(SAVED_LOGIN_KEY, JSON.stringify({ name, code })); } catch(err){}
+}
+function forgetLogin(){
+  try { localStorage.removeItem(SAVED_LOGIN_KEY); } catch(err){}
+}
+
+// ---- Compteur du musicien connecté ----
+async function refreshMyCount(){
+  if(!currentUserName || isOrganizer) return;
+  try {
+    const res = await apiPost({ action:'getMyCount', name: currentUserName, code: currentUserCode });
+    if(res.ok){ myRep = { count: res.count, total: res.total }; updateMyRepDisplay(); }
+  } catch(err){ /* silencieux : le compteur reste simplement masqué */ }
+}
+function updateMyRepDisplay(){
+  const row = document.getElementById('myrep-row');
+  if(row){
+    if(isOrganizer || !myRep || !myRep.total){
+      row.style.display = 'none';
+    } else {
+      row.style.display = '';
+      document.getElementById('myrep-num').textContent = myRep.count;
+      document.getElementById('myrep-total').textContent = myRep.total;
+    }
+  }
+  const phrase = (myRep && !isOrganizer) ? repCountPhrase(myRep.count, myRep.total) : '';
+  document.querySelectorAll('.seat-popup-rep[data-rep-self]').forEach(el => { el.textContent = phrase; });
+}
+
+// ---- Compteur dans les bulles ----
+// Musicien : uniquement sur SA propre place. Organisateur : sur toutes les places nommées.
+function orgaRepText(name){
+  if(!repStats) return '';
+  return repCountPhrase(repStats.counts[normalizeName(name)] || 0, repStats.total);
+}
+function orgaRepLine(name){
+  return `<p class="seat-popup-rep" data-rep-name="${esc(name)}">${esc(orgaRepText(name))}</p>`;
+}
+function ownRepLine(){
+  return `<p class="seat-popup-rep" data-rep-self="1">${esc(myRep ? repCountPhrase(myRep.count, myRep.total) : '')}</p>`;
+}
+function refreshPopupRepLines(){
+  document.querySelectorAll('.seat-popup-rep[data-rep-name]').forEach(el => {
+    el.textContent = orgaRepText(el.dataset.repName);
+  });
+}
+
+// ---- Arrivée par un QR de répétition (côté musicien) ----
+function clearPendingCheckin(){
+  pendingCheckin = null;
+  const banner = document.getElementById('gate-checkin-banner');
+  if(banner) banner.style.display = 'none';
+}
+
+function showCheckinOverlay(state, data){
+  const ov = document.getElementById('checkin-overlay');
+  const icon = document.getElementById('checkin-icon');
+  const title = document.getElementById('checkin-title');
+  const text = document.getElementById('checkin-text');
+  const primary = document.getElementById('checkin-primary-btn');
+  const secondary = document.getElementById('checkin-secondary-btn');
+  secondary.style.display = 'none';
+  primary.style.display = '';
+  ov.style.display = 'flex';
+  const close = () => { ov.style.display = 'none'; };
+
+  if(state === 'loading'){
+    icon.textContent = '⏳'; title.textContent = 'Pointage en cours…'; text.textContent = '';
+    primary.style.display = 'none';
+  } else if(state === 'ok'){
+    const s = data.session || {};
+    icon.textContent = '✅';
+    title.textContent = data.already ? 'Déjà pointé(e)' : 'Présence enregistrée';
+    text.textContent = data.name + '\nRépétition du ' + formatParadeDate(s.date) + (s.label ? ' — ' + s.label : '') +
+      '\nTu comptes ' + plural(data.count, 'répétition') + ' sur ' + data.total + '.';
+    primary.textContent = 'Voir le plan';
+    primary.onclick = () => {
+      close();
+      // Écran de connexion encore affiché (identifiants mémorisés) : on entre dans le plan.
+      if(document.getElementById('access-gate').style.display !== 'none') tryNameEntry();
+    };
+  } else {
+    icon.textContent = '⚠️'; title.textContent = 'Pointage impossible';
+    text.textContent = data.message;
+    primary.textContent = 'Fermer';
+    primary.onclick = close;
+    if(data.retry){
+      secondary.style.display = '';
+      secondary.textContent = 'Réessayer';
+      secondary.onclick = data.retry;
+    }
+  }
+}
+
+async function runCheckin(name, code){
+  if(!pendingCheckin) return;
+  const p = pendingCheckin;
+  showCheckinOverlay('loading');
+  try {
+    const res = await apiPost({ action:'checkin', name, code, session: p.session, token: p.token });
+    if(res.ok){
+      clearPendingCheckin();
+      myRep = { count: res.count, total: res.total };
+      updateMyRepDisplay();
+      showCheckinOverlay('ok', res);
+    } else if(res.code === 'BAD_ACCESS'){
+      // Identifiants mémorisés devenus invalides : on les oublie et on demande une saisie.
+      forgetLogin();
+      document.getElementById('checkin-overlay').style.display = 'none';
+      document.getElementById('gate-error').textContent = 'Nom ou code incorrect. Saisis-les à nouveau pour valider ta présence.';
+    } else {
+      clearPendingCheckin();
+      showCheckinOverlay('error', { message: res.error || 'Erreur, réessaie.' });
+    }
+  } catch(err){
+    showCheckinOverlay('error', { message: 'Erreur réseau.', retry: () => runCheckin(name, code) });
+  }
+}
+
+function initFromUrl(){
+  let rep = null, tok = null;
+  try {
+    const params = new URLSearchParams(location.search);
+    rep = params.get('rep'); tok = params.get('t');
+  } catch(err){}
+  if(rep && tok && /^\d+$/.test(rep) && /^[0-9a-fA-F]{6,64}$/.test(tok)){
+    pendingCheckin = { session: Number(rep), token: tok };
+    // On retire les paramètres de l'adresse : un rafraîchissement ne repointe pas.
+    try { history.replaceState(null, '', location.pathname); } catch(err){}
+    const banner = document.getElementById('gate-checkin-banner');
+    banner.textContent = '📷 Pointage de répétition : connecte-toi pour valider ta présence.';
+    banner.style.display = 'block';
+  }
+  const saved = loadSavedLogin();
+  if(saved){
+    document.getElementById('gate-name').value = saved.name;
+    document.getElementById('gate-code').value = saved.code;
+    if(pendingCheckin) runCheckin(saved.name, saved.code);
+  }
+}
+
+// ---- Organisateur : suivi en direct de la répétition ouverte ----
+function onOrganizerReady(){
+  document.getElementById('rep-date-input').value = localTodayISO();
+  refreshRepStats();
+}
+
+async function refreshRepStats(){
+  if(!isOrganizer) return;
+  try {
+    const res = await apiPost({ action:'getRepStats', password: organizerPassword });
+    if(res.ok){
+      repStats = { total: res.total, sessions: res.sessions || [], counts: res.counts || {} };
+      renderRepPanel();
+    }
+  } catch(err){ /* on réessaiera au prochain rafraîchissement */ }
+}
+
+function renderRepPanel(){
+  if(!repStats) return;
+  const open = repStats.sessions.find(s => s.open);
+  if(open && (!repLive || repLive.id !== open.id)) startRepLive(open, null);
+  else if(!open && repLive) stopRepLive();
+  renderRepSessions();
+  renderRepCounts();
+  refreshPopupRepLines();
+}
+
+function renderRepSessions(){
+  const box = document.getElementById('rep-sessions-list');
+  if(!repStats.sessions.length){
+    box.innerHTML = '<p class="rep-empty">Aucune répétition pour l\'instant.</p>';
+    return;
+  }
+  box.innerHTML = repStats.sessions.map(s => `
+    <div class="rep-item ${s.open ? 'rep-item-open' : ''}">
+      <button class="rep-item-main" data-rep-detail="${s.id}">
+        <span class="rep-item-date">${esc(formatRepDate(s.date))}</span>
+        <span class="rep-item-label">${esc(s.label || 'Sans libellé')}${s.open ? ' <em>· EN COURS</em>' : ''}</span>
+      </button>
+      <span class="rep-item-count" title="présents">${s.count}</span>
+    </div>`).join('');
+  box.querySelectorAll('[data-rep-detail]').forEach(btn => {
+    btn.addEventListener('click', () => toggleRepDetail(Number(btn.dataset.repDetail)));
+  });
+}
+
+function renderRepCounts(){
+  if(!repStats) return;
+  document.getElementById('rep-counts-total').textContent = '· sur ' + plural(repStats.total, 'répétition');
+  const q = normalizeName(document.getElementById('rep-search-input').value);
+  const sort = document.getElementById('rep-sort-select').value;
+  let rows = roster.map(name => ({ name, n: repStats.counts[normalizeName(name)] || 0 }))
+                   .filter(r => !q || normalizeName(r.name).includes(q));
+  rows.sort((a, b) => {
+    if(sort === 'asc' && a.n !== b.n) return a.n - b.n;
+    if(sort === 'desc' && a.n !== b.n) return b.n - a.n;
+    return a.name.localeCompare(b.name, 'fr');
+  });
+  document.getElementById('rep-counts-list').innerHTML = rows.length
+    ? rows.map(r => `<div class="rep-count-row"><span>${esc(r.name)}</span><b>${r.n}</b></div>`).join('')
+    : '<p class="rep-empty">Aucun musicien.</p>';
+}
+document.getElementById('rep-search-input').addEventListener('input', renderRepCounts);
+document.getElementById('rep-sort-select').addEventListener('change', renderRepCounts);
+
+function updateRepLiveUi(expiresIn){
+  if(!repLive) return;
+  const title = formatRepDate(repLive.date) + (repLive.label ? ' · ' + repLive.label : '');
+  document.getElementById('rep-live-title').textContent = title;
+  document.getElementById('rep-live-count').textContent = repLive.count || 0;
+  document.getElementById('qr-title').textContent = 'Répétition du ' + formatParadeDate(repLive.date) + (repLive.label ? ' — ' + repLive.label : '');
+  document.getElementById('qr-count').textContent = repLive.count || 0;
+  if(typeof expiresIn === 'number'){
+    const bar = document.getElementById('qr-timer-bar');
+    bar.style.transition = 'none';
+    bar.style.width = Math.max(0, Math.min(100, expiresIn / REP_TOKEN_STEP * 100)) + '%';
+    void bar.offsetWidth; // force le recalcul avant de lancer l'animation
+    bar.style.transition = 'width ' + expiresIn + 's linear';
+    bar.style.width = '0%';
+  }
+}
+
+function startRepLive(session, first){
+  repLive = { id: session.id, date: session.date, label: session.label || '', count: session.count || 0 };
+  lastQrToken = (first && first.token) ? first.token : '';
+  repPollTick = 0;
+  document.getElementById('rep-open-form').style.display = 'none';
+  document.getElementById('rep-live').style.display = 'block';
+  updateRepLiveUi(first ? first.expiresIn : undefined);
+  scheduleRepPoll(first ? REP_POLL_MS : 0);
+}
+
+function stopRepLive(){
+  clearTimeout(repPollTimer);
+  repPollTimer = null;
+  repLive = null;
+  lastQrToken = '';
+  closeQrOverlay();
+  document.getElementById('rep-live').style.display = 'none';
+  document.getElementById('rep-open-form').style.display = '';
+}
+
+function scheduleRepPoll(ms){
+  clearTimeout(repPollTimer);
+  if(repLive) repPollTimer = setTimeout(pollRepLive, ms);
+}
+
+async function pollRepLive(){
+  if(!isOrganizer || !repLive) return;
+  const id = repLive.id;
+  try {
+    const res = await apiPost({ action:'getSessionToken', session: id, password: organizerPassword });
+    if(!repLive || repLive.id !== id) return;
+    if(!res.ok || res.open === false){
+      stopRepLive();
+      showToast(res.ok ? 'Cette répétition est terminée.' : (res.error || 'Répétition introuvable.'));
+      refreshRepStats();
+      return;
+    }
+    repLive.count = res.count;
+    if(res.token !== lastQrToken){
+      lastQrToken = res.token;
+      if(qrOverlayOpen) renderQr();
+    }
+    updateRepLiveUi(res.expiresIn);
+    if(++repPollTick % 4 === 0) refreshRepStats();
+  } catch(err){ /* réseau : on réessaie au prochain tour */ }
+  scheduleRepPoll(REP_POLL_MS);
+}
+
+document.getElementById('rep-open-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('rep-open-btn');
+  const label = document.getElementById('rep-label-input').value.trim();
+  const date = document.getElementById('rep-date-input').value || localTodayISO();
+  btn.disabled = true;
+  try {
+    const res = await apiPost({ action:'openSession', date, label, password: organizerPassword });
+    if(res.ok){
+      document.getElementById('rep-label-input').value = '';
+      startRepLive(res.session, res);
+      openQrOverlay();
+      refreshRepStats();
+    } else {
+      showToast(res.error || "Impossible d'ouvrir la répétition.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+  btn.disabled = false;
+});
+
+document.getElementById('rep-close-btn').addEventListener('click', async () => {
+  if(!repLive) return;
+  if(!confirm('Clôturer cette répétition ? Plus personne ne pourra pointer avec le QR.')) return;
+  try {
+    const res = await apiPost({ action:'closeSession', session: repLive.id, password: organizerPassword });
+    if(res.ok){
+      stopRepLive();
+      showToast('Répétition clôturée.');
+      refreshRepStats();
+    } else {
+      showToast(res.error || 'Erreur, réessaie.');
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+document.getElementById('rep-show-qr-btn').addEventListener('click', openQrOverlay);
+document.getElementById('qr-close-btn').addEventListener('click', closeQrOverlay);
+
+// ---- QR plein écran (à projeter ou à montrer sur une tablette) ----
+function renderQr(){
+  if(!repLive || !lastQrToken) return;
+  const url = location.href.split(/[?#]/)[0] + '?rep=' + repLive.id + '&t=' + lastQrToken;
+  const box = document.getElementById('qr-box');
+  try { box.innerHTML = QR.toSvg(url); }
+  catch(err){ box.textContent = 'QR indisponible'; }
+}
+
+async function requestWakeLock(){
+  try {
+    if('wakeLock' in navigator && !wakeLockHandle){
+      wakeLockHandle = await navigator.wakeLock.request('screen');
+      wakeLockHandle.addEventListener('release', () => { wakeLockHandle = null; });
+    }
+  } catch(err){ /* non supporté : l'écran peut simplement s'éteindre */ }
+}
+function releaseWakeLock(){
+  try { if(wakeLockHandle) wakeLockHandle.release(); } catch(err){}
+  wakeLockHandle = null;
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && qrOverlayOpen) requestWakeLock();
+});
+
+function openQrOverlay(){
+  if(!repLive) return;
+  qrOverlayOpen = true;
+  document.getElementById('qr-overlay').style.display = 'flex';
+  updateRepLiveUi();
+  renderQr();
+  requestWakeLock();   // garde l'écran allumé tant que le QR est affiché
+  scheduleRepPoll(0);  // rafraîchit tout de suite le jeton et les présents
+}
+
+function closeQrOverlay(){
+  qrOverlayOpen = false;
+  document.getElementById('qr-overlay').style.display = 'none';
+  releaseWakeLock();
+}
+
+// ---- Détail d'une répétition (présents, corrections, suppression) ----
+async function toggleRepDetail(id){
+  const box = document.getElementById('rep-detail');
+  if(repDetailId === id){
+    repDetailId = null;
+    box.style.display = 'none';
+    return;
+  }
+  repDetailId = id;
+  box.style.display = 'block';
+  box.innerHTML = '<p class="rep-empty">Chargement…</p>';
+  await loadRepDetail();
+}
+
+async function loadRepDetail(){
+  const id = repDetailId;
+  if(id == null) return;
+  const box = document.getElementById('rep-detail');
+  try {
+    const res = await apiPost({ action:'getSessionDetail', session: id, password: organizerPassword });
+    if(repDetailId !== id) return;
+    if(!res.ok){
+      box.innerHTML = `<p class="rep-empty">${esc(res.error || 'Erreur.')}</p>`;
+      return;
+    }
+    const s = res.session;
+    box.innerHTML = `
+      <p class="rep-detail-title">${esc(formatRepDate(s.date))}${s.label ? ' · ' + esc(s.label) : ''} — ${plural(res.present.length, 'présent')}</p>
+      <div class="rep-list">${res.present.length
+        ? res.present.map(p => `<div class="rep-count-row"><span>${esc(p.name)}<small>${esc((p.ts || '').slice(11, 16))}</small></span><button class="rep-x" data-rem="${esc(p.name)}" title="Retirer de cette répétition">✕</button></div>`).join('')
+        : '<p class="rep-empty">Personne pour l\'instant.</p>'}</div>
+      <div class="add-row">
+        <input type="text" id="rep-add-input" placeholder="Ajouter un présent (nom)" autocomplete="off">
+        <button class="btn btn-save" id="rep-add-btn">Ajouter</button>
+      </div>
+      <button class="btn btn-clear" id="rep-delete-btn">Supprimer cette répétition</button>`;
+    attachNameAutocomplete(document.getElementById('rep-add-input'));
+
+    box.querySelectorAll('[data-rem]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.rem;
+        if(!confirm(`Retirer "${name}" de cette répétition ?`)) return;
+        try {
+          const r = await apiPost({ action:'removePresence', session: id, name, password: organizerPassword });
+          if(r.ok){ showToast('Présence retirée.'); await loadRepDetail(); refreshRepStats(); }
+          else showToast(r.error || 'Erreur, réessaie.');
+        } catch(err){ showToast('Erreur réseau, réessaie.'); }
+      });
+    });
+    document.getElementById('rep-add-btn').addEventListener('click', async () => {
+      const input = document.getElementById('rep-add-input');
+      const name = input.value.trim();
+      if(!name) return;
+      try {
+        const r = await apiPost({ action:'addPresence', session: id, name, password: organizerPassword });
+        if(r.ok){
+          showToast(r.already ? 'Déjà présent(e) à cette répétition.' : 'Présence ajoutée.');
+          await loadRepDetail(); refreshRepStats();
+        } else showToast(r.error || 'Erreur, réessaie.');
+      } catch(err){ showToast('Erreur réseau, réessaie.'); }
+    });
+    document.getElementById('rep-delete-btn').addEventListener('click', async () => {
+      if(!confirm(`Supprimer définitivement cette répétition et ses ${plural(res.present.length, 'présence')} ? Les compteurs des musiciens seront recalculés.`)) return;
+      try {
+        const r = await apiPost({ action:'deleteSession', session: id, password: organizerPassword });
+        if(r.ok){
+          if(repLive && repLive.id === id) stopRepLive();
+          repDetailId = null;
+          box.style.display = 'none';
+          showToast('Répétition supprimée.');
+          refreshRepStats();
+        } else showToast(r.error || 'Erreur, réessaie.');
+      } catch(err){ showToast('Erreur réseau, réessaie.'); }
+    });
+  } catch(err){
+    if(repDetailId === id) box.innerHTML = '<p class="rep-empty">Erreur réseau, réessaie.</p>';
+  }
+}
+
+// ------------------------------------------------------------
 // Pré-chargement de la liste des noms pour alimenter l'autocomplétion
 // (roster) et activation sur les deux champs nom permanents de la page
 // (connexion musicien, ajout d'un musicien côté organisateur). Charge
@@ -1943,6 +2813,7 @@ async function preloadRosterDatalist(){
 preloadRosterDatalist();
 attachNameAutocomplete(document.getElementById('gate-name'));
 attachNameAutocomplete(document.getElementById('roster-add-input'));
+initFromUrl();
 
 </script>
 
