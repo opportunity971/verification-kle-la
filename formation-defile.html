@@ -269,6 +269,13 @@
   .add-row input{ flex:1; }
   .add-row button{ width:auto; padding:9px 14px; margin-top:0; }
 
+  /* ---------- Mode test : sécurité par code désactivée ---------- */
+  #access-gate .test-banner{ color: var(--orange); font-weight:700; font-size:0.8rem; margin:0 0 14px 0; }
+  #test-mode-banner{ background: rgba(255,140,61,0.12); border-color: rgba(255,140,61,0.55); color: var(--orange); font-weight:700; }
+  .codesec-status{ font-size:0.8rem; line-height:1.5; margin:0 0 8px 0; font-weight:700; }
+  .codesec-status.on{ color: var(--vert); }
+  .codesec-status.off{ color: var(--orange); }
+
   /* ---------- Répétitions : pointage par QR, panneau organisateur, compteurs ---------- */
   .seat-popup .seat-popup-rep{ color: var(--vert); font-weight:700; margin:0; font-size:0.8rem; }
   .seat-popup .seat-popup-rep:empty{ display:none; }
@@ -339,8 +346,9 @@
     <h1>KLÉ LA MASS<span class="title-sub">MIZISYEN</span></h1>
     <p class="parade-date-banner" id="gate-parade-date"></p>
     <p class="checkin-banner" id="gate-checkin-banner" style="display:none;"></p>
+    <p class="test-banner" id="gate-test-banner" style="display:none;"></p>
     <div id="gate-name-mode">
-      <p>Entre ton nom complet et ton code personnel pour accéder au plan.</p>
+      <p id="gate-intro">Entre ton nom complet et ton code personnel pour accéder au plan.</p>
       <input type="text" id="gate-name" placeholder="Ton nom complet" autocomplete="off">
       <datalist id="roster-datalist"></datalist>
       <!-- L'autocomplétion réelle est désormais assurée par la liste déroulante
@@ -376,10 +384,30 @@
       <button class="link-btn" id="btn-logout">Quitter</button>
     </div>
 
+    <div class="banner" id="test-mode-banner" style="display:none;"></div>
+
     <div id="paradedate-block" style="display:none;">
       <p class="panel-title">DATE DU DÉFILÉ</p>
       <input type="date" id="paradedate-input">
       <button class="btn btn-save" id="paradedate-save-btn">Enregistrer la date</button>
+    </div>
+
+    <div id="codesec-block" style="display:none;">
+      <p class="panel-title">SÉCURITÉ PAR CODE (MODE TEST)</p>
+      <p class="codesec-status on" id="codesec-status">Code à 4 chiffres : activé</p>
+      <div id="codesec-hours-wrap">
+        <label for="codesec-hours" style="display:block; font-size:0.73rem; color:var(--slate); margin:0 0 4px;">Réactivation automatique du code :</label>
+        <select id="codesec-hours">
+          <option value="0">Jamais (je le réactive moi-même)</option>
+          <option value="2">Dans 2 heures</option>
+          <option value="6">Dans 6 heures</option>
+          <option value="12">Dans 12 heures</option>
+          <option value="24">Dans 24 heures</option>
+          <option value="48">Dans 48 heures</option>
+        </select>
+      </div>
+      <button class="btn btn-clear" id="codesec-toggle-btn">Désactiver le code (mode test)</button>
+      <p class="empty-msg" style="margin-top:8px; color:var(--slate); font-size:0.75rem; line-height:1.5;">Codes désactivés : le nom complet suffit pour se connecter, réserver et pointer. Le QR tournant de répétition reste exigé.</p>
     </div>
 
     <div id="rep-block" style="display:none;">
@@ -408,6 +436,9 @@
       </select>
       <input type="text" id="rep-search-input" placeholder="Rechercher un musicien…" autocomplete="off" style="margin-top:8px;">
       <div class="rep-list" id="rep-counts-list" style="margin-top:8px;"></div>
+
+      <button class="btn btn-clear" id="rep-reset-btn" style="margin-top:16px;">🗑 Remettre les répétitions à zéro</button>
+      <p class="empty-msg" style="margin-top:6px; color:var(--slate); font-size:0.75rem; line-height:1.5;">À faire après la phase de test : efface toutes les répétitions et toutes les présences (les compteurs repartent à 0). La grille, les musiciens et leurs codes ne changent pas.</p>
     </div>
 
     <div id="orga-inline-login" style="display:none;">
@@ -817,6 +848,8 @@ let currentUserCode = '';
 let organizerPassword = '';
 let activeFilter = '';
 let initialDataLoaded = false; // true dès que le préchargement (avant connexion) a réussi
+let codeRequired = true;       // false = mode test : le nom seul suffit (code à 4 chiffres désactivé côté serveur)
+let codeDisabledUntil = 0;     // horodatage (ms) de réactivation automatique du code, 0 = pas de limite
 
 const sectionLabel = { basse: 'Basse', contrebasse: 'Contrebasse', chan: 'Tambours chan', konk: 'Konk', chacha: 'Chacha', siyak: 'Siyak', clave: 'Clave' };
 const sectionAbbrev = { basse: 'BA', contrebasse: 'CB', chan: 'TC', konk: 'KO', chacha: 'CC', siyak: 'SY', clave: 'CL' };
@@ -853,6 +886,79 @@ function renderParadeDateBanner(){
   const frontLineEl = document.getElementById('front-line-banner');
   if(frontLineEl) frontLineEl.textContent = text || 'TÊTE DU CORTÈGE';
 }
+
+// ------------------------------------------------------------
+// Sécurité par code : affichage selon l'état renvoyé par le serveur.
+// Code désactivé (mode test) -> champ code masqué à la connexion +
+// bandeau "Mode test" bien visible pour tout le monde + état du
+// bouton dans le panneau organisateur.
+// ------------------------------------------------------------
+function codeModeMessage(){
+  let msg = '🧪 Mode test : les codes sont désactivés, le nom complet suffit.';
+  if(codeDisabledUntil > 0){
+    const d = new Date(codeDisabledUntil);
+    if(!isNaN(d.getTime())){
+      msg += ' Réactivation automatique le ' + d.toLocaleString('fr-FR', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) + '.';
+    }
+  }
+  return msg;
+}
+
+function applyCodeMode(){
+  const codeInput = document.getElementById('gate-code');
+  if(codeInput) codeInput.style.display = codeRequired ? '' : 'none';
+  const intro = document.getElementById('gate-intro');
+  if(intro) intro.textContent = codeRequired
+    ? 'Entre ton nom complet et ton code personnel pour accéder au plan.'
+    : 'Entre ton nom complet pour accéder au plan.';
+
+  const gateBanner = document.getElementById('gate-test-banner');
+  const mainBanner = document.getElementById('test-mode-banner');
+  const msg = codeRequired ? '' : codeModeMessage();
+  [gateBanner, mainBanner].forEach(el => {
+    if(!el) return;
+    el.textContent = msg;
+    el.style.display = codeRequired ? 'none' : 'block';
+  });
+
+  const status = document.getElementById('codesec-status');
+  const btn = document.getElementById('codesec-toggle-btn');
+  const hoursWrap = document.getElementById('codesec-hours-wrap');
+  if(status && btn && hoursWrap){
+    if(codeRequired){
+      status.textContent = 'Code à 4 chiffres : activé';
+      status.className = 'codesec-status on';
+      btn.textContent = 'Désactiver le code (mode test)';
+      btn.className = 'btn btn-clear';
+      hoursWrap.style.display = '';
+    } else {
+      status.textContent = codeModeMessage().replace('🧪 ', '');
+      status.className = 'codesec-status off';
+      btn.textContent = 'Réactiver le code maintenant';
+      btn.className = 'btn btn-save';
+      hoursWrap.style.display = 'none';
+    }
+  }
+}
+
+document.getElementById('codesec-toggle-btn').addEventListener('click', async () => {
+  const disabling = codeRequired;
+  if(disabling){
+    if(!confirm("Désactiver le code à 4 chiffres ? Tous les musiciens de la liste pourront se connecter, réserver et pointer avec leur nom seul. N'oublie pas de le réactiver après le test.")) return;
+  }
+  const hours = disabling ? (Number(document.getElementById('codesec-hours').value) || 0) : 0;
+  try {
+    const res = await apiPost({ action:'setCodeRequired', required: !disabling, hours, password: organizerPassword });
+    if(res.ok){
+      codeRequired = res.codeRequired !== false;
+      codeDisabledUntil = Number(res.codeDisabledUntil) || 0;
+      applyCodeMode();
+      showToast(codeRequired ? 'Code réactivé : la sécurité est de nouveau normale.' : 'Mode test : codes désactivés.');
+    } else {
+      showToast(res.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
 
 // ------------------------------------------------------------
 // Photos des musiciens (photos.json, chargé une fois au démarrage)
@@ -925,7 +1031,10 @@ async function loadAllData(){
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
     applyRowInstruments();
     paradeDate = data.paradeDate || '';
+    codeRequired = data.codeRequired !== false; // absent (ancien script) = code exigé
+    codeDisabledUntil = Number(data.codeDisabledUntil) || 0;
     renderParadeDateBanner();
+    applyCodeMode();
     initialDataLoaded = true;
     return true;
   } catch(err){
@@ -2029,6 +2138,7 @@ function goToGate(){
   document.getElementById('gate-code').value = '';
   document.getElementById('gate-error').textContent = '';
   document.getElementById('orga-inline-login').style.display = 'none';
+  document.getElementById('codesec-block').style.display = 'none';
   // Répétitions : arrêt du suivi en direct et remise à zéro de l'état
   stopRepLive();
   repStats = null;
@@ -2074,6 +2184,8 @@ async function submitOrgaInline(){
       renderRoster();
       document.getElementById('paradedate-block').style.display = 'block';
       document.getElementById('paradedate-input').value = paradeDate;
+      document.getElementById('codesec-block').style.display = 'block';
+      applyCodeMode();
       document.getElementById('rowlabel-block').style.display = 'block';
       document.getElementById('reset-block').style.display = 'block';
       populateRowLabelSelect();
@@ -2193,13 +2305,16 @@ document.getElementById('gate-back-link').addEventListener('click', () => {
 
 async function tryNameEntry(){
   const typed = document.getElementById('gate-name').value;
-  const typedCode = document.getElementById('gate-code').value.trim();
   if(!typed.trim()){ document.getElementById('gate-error').textContent = 'Indique ton nom.'; return; }
-  if(!typedCode){ document.getElementById('gate-error').textContent = 'Indique ton code.'; return; }
+  // Si le préchargement n'a pas encore abouti, on ne sait pas si le code est exigé :
+  // on récupère d'abord l'état réel (mode test ou non) avant de valider le champ code.
+  if(!initialDataLoaded) await loadAllData();
+  const typedCode = document.getElementById('gate-code').value.trim();
+  if(codeRequired && !typedCode){ document.getElementById('gate-error').textContent = 'Indique ton code.'; return; }
   try {
     const result = await apiPost({ action:'checkAccess', name: typed, code: typedCode });
     if(!result.ok){
-      document.getElementById('gate-error').textContent = result.error || "Nom ou code incorrect. Contacte l'organisateur.";
+      document.getElementById('gate-error').textContent = result.error || (codeRequired ? "Nom ou code incorrect. Contacte l'organisateur." : "Nom non reconnu. Contacte l'organisateur.");
       return;
     }
     currentUserName = result.name; // casse exacte renvoyée par le serveur
@@ -2246,6 +2361,7 @@ function openApp(asOrganizer){
     renderRoster();
     document.getElementById('paradedate-block').style.display = 'block';
     document.getElementById('paradedate-input').value = paradeDate;
+    document.getElementById('codesec-block').style.display = 'block';
     document.getElementById('rowlabel-block').style.display = 'block';
     document.getElementById('reset-block').style.display = 'block';
     document.getElementById('rowmanage-block').style.display = 'block';
@@ -2260,11 +2376,13 @@ function openApp(asOrganizer){
     document.getElementById('btn-toggle-orga').textContent = 'Accès organisateur';
     document.getElementById('roster-block').style.display = 'none';
     document.getElementById('paradedate-block').style.display = 'none';
+    document.getElementById('codesec-block').style.display = 'none';
     document.getElementById('rowlabel-block').style.display = 'none';
     document.getElementById('reset-block').style.display = 'none';
     document.getElementById('rowmanage-block').style.display = 'none';
     document.getElementById('rep-block').style.display = 'none';
   }
+  applyCodeMode();
   updateMyRepDisplay();
   loadGrid();
 }
@@ -2373,12 +2491,13 @@ function localTodayISO(){
 }
 
 // ---- Identifiants mémorisés sur l'appareil (le scan du QR suffit ensuite) ----
+// En mode test (code désactivé), le code mémorisé peut être vide : seul le nom compte.
 function loadSavedLogin(){
   try {
     const raw = localStorage.getItem(SAVED_LOGIN_KEY);
     if(!raw) return null;
     const o = JSON.parse(raw);
-    if(o && o.name && o.code) return o;
+    if(o && o.name) return { name: o.name, code: o.code || '' };
   } catch(err){}
   return null;
 }
@@ -2492,7 +2611,9 @@ async function runCheckin(name, code){
       // Identifiants mémorisés devenus invalides : on les oublie et on demande une saisie.
       forgetLogin();
       document.getElementById('checkin-overlay').style.display = 'none';
-      document.getElementById('gate-error').textContent = 'Nom ou code incorrect. Saisis-les à nouveau pour valider ta présence.';
+      document.getElementById('gate-error').textContent = codeRequired
+        ? 'Nom ou code incorrect. Saisis-les à nouveau pour valider ta présence.'
+        : 'Nom non reconnu. Saisis-le à nouveau pour valider ta présence.';
     } else {
       clearPendingCheckin();
       showCheckinOverlay('error', { message: res.error || 'Erreur, réessaie.' });
@@ -2688,6 +2809,25 @@ document.getElementById('rep-close-btn').addEventListener('click', async () => {
   } catch(err){ showToast('Erreur réseau, réessaie.'); }
 });
 
+// Remise à zéro complète du suivi des répétitions (à faire après la phase de test).
+document.getElementById('rep-reset-btn').addEventListener('click', async () => {
+  const n = repStats ? repStats.total : 0;
+  if(!confirm(`Remettre à zéro TOUTES les répétitions ? ${plural(n, 'répétition')} et toutes les présences enregistrées seront supprimées, et les compteurs de tous les musiciens repartiront à 0. C'est irréversible.`)) return;
+  if(!confirm('Dernière confirmation : supprimer définitivement toutes les répétitions et toutes les présences ?')) return;
+  try {
+    const res = await apiPost({ action:'resetRepetitions', password: organizerPassword });
+    if(res.ok){
+      stopRepLive();
+      repDetailId = null;
+      document.getElementById('rep-detail').style.display = 'none';
+      await refreshRepStats();
+      showToast('Répétitions remises à zéro.');
+    } else {
+      showToast(res.error || 'Erreur, réessaie.');
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
 document.getElementById('rep-show-qr-btn').addEventListener('click', openQrOverlay);
 document.getElementById('qr-close-btn').addEventListener('click', closeQrOverlay);
 
@@ -2816,11 +2956,12 @@ async function loadRepDetail(){
 // (roster) et activation sur les deux champs nom permanents de la page
 // (connexion musicien, ajout d'un musicien côté organisateur). Charge
 // aussi la date du défilé (paradeDate) pour affichage immédiat sur
-// l'écran de connexion, avant même que l'utilisateur ne se connecte.
+// l'écran de connexion, avant même que l'utilisateur ne se connecte,
+// ainsi que l'état de la sécurité par code (mode test ou non).
 // ------------------------------------------------------------
 async function preloadRosterDatalist(){
   try {
-    await loadAllData(); // remplit "roster" (noms seulement) et "paradeDate"
+    await loadAllData(); // remplit "roster" (noms seulement), "paradeDate" et l'état du code
   } catch(err){
     // Pas grave : les champs restent utilisables sans autocomplétion si ça échoue.
   }
