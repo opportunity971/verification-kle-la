@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mode d'emploi Klé la Mass</title>
+<style>
+:root{
+  --ink:#1f1235; --bg:#fff7ea; --card:#ffffff; --muted:#6b5b7b;
+  --pink:#e11d74; --orange:#f97316; --yellow:#fbbf24; --violet:#6d28d9; --green:#16a34a;
+  --ba:#2563eb; --cb:#7c3aed; --tc:#dc2626; --ko:#16a34a; --cc:#0ea5e9; --sy:#f97316; --cl:#d946ef;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;-webkit-text-size-adjust:100%}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 56px}
+header.hero{background:linear-gradient(135deg,#6d28d9 0%,#e11d74 55%,#f97316 100%);color:#fff;padding:36px 16px 40px;text-align:center;border-radius:0 0 28px 28px}
+.hero small{display:block;letter-spacing:.14em;text-transform:uppercase;font-size:.75rem;opacity:.9}
+.hero h1{margin:10px 0 0;font-size:clamp(2rem,9vw,3.2rem);line-height:1;letter-spacing:.03em;font-weight:900}
+.hero h1 span{display:block;font-size:.5em;letter-spacing:.35em;color:var(--yellow);margin-top:6px}
+.intro{margin:22px 0 14px;font-size:1.05rem}
+.url{background:var(--card);border:2px dashed var(--pink);border-radius:14px;padding:12px 14px;word-break:break-all}
+.url b{display:block;font-size:.8rem;color:var(--pink);text-transform:uppercase;letter-spacing:.08em}
+.url a{color:var(--violet);font-weight:700}
+.nav{display:flex;gap:10px;margin:16px 0 4px;flex-wrap:wrap}
+.nav a{background:var(--ink);color:#fff;text-decoration:none;padding:9px 16px;border-radius:999px;font-weight:600;font-size:.92rem}
+h2{font-size:1.5rem;margin:34px 0 14px;color:var(--violet)}
+.step{background:var(--card);border-radius:18px;padding:18px 16px;margin:16px 0;box-shadow:0 3px 14px rgba(109,40,217,.10);border-left:6px solid var(--pink)}
+.step h3{margin:0 0 8px;font-size:1.15rem;display:flex;align-items:center;gap:10px}
+.num{flex:none;width:32px;height:32px;border-radius:50%;background:var(--pink);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
+.step p{margin:8px 0}
+.tip{background:#fff3c4;border-radius:10px;padding:9px 12px;font-size:.93rem;margin:10px 0}
+.test{background:#ede9fe;border:2px solid var(--violet);border-radius:14px;padding:12px 14px;margin:18px 0}
+.test b{color:var(--violet)}
+/* maquettes */
+.mock{background:#faf5ff;border:1px solid #e4d9f5;border-radius:14px;padding:14px;margin:12px 0;display:flex;flex-direction:column;align-items:center;gap:10px}
+.phone-title{font-weight:900;letter-spacing:.04em;text-align:center;line-height:1.05}
+.phone-title i{display:block;font-style:normal;font-size:.55em;letter-spacing:.3em;color:var(--pink)}
+.field{width:100%;max-width:270px;background:#fff;border:2px solid #d8cdeb;border-radius:10px;padding:8px 10px;font-size:.92rem}
+.field em{display:block;font-style:normal;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.btn{background:var(--pink);color:#fff;font-weight:700;border-radius:10px;padding:9px 18px;font-size:.95rem;text-align:center}
+.btn.alt{background:var(--violet)}
+.btn.off{background:#fff;color:var(--pink);border:2px solid var(--pink)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.85rem;margin:8px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:50%;display:inline-block}
+.grid{display:flex;flex-direction:column;gap:6px;width:100%;max-width:330px}
+.row{display:flex;align-items:center;gap:6px}
+.rn{width:20px;font-size:.75rem;font-weight:700;color:var(--muted);text-align:right}
+.row .lbl{font-size:.7rem;font-weight:800;margin:0 0 -2px 26px}
+.seat{position:relative;width:48px;height:48px;flex:none;color:var(--c,#aaa)}
+.seat svg{width:100%;height:100%;display:block}
+.seat b{position:absolute;left:0;right:0;top:55%;transform:translateY(-50%);text-align:center;font-size:.62rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.sy{--c:var(--sy)} .tc{--c:var(--tc)} .cl{--c:var(--cl)} .ba{--c:var(--ba)} .cb{--c:var(--cb)} .ko{--c:var(--ko)} .cc{--c:var(--cc)}
+.taken svg{filter:saturate(.55) brightness(.72)}
+.free svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+.locked{--c:#9ca3af}
+.mine svg{filter:drop-shadow(0 0 6px var(--yellow)) drop-shadow(0 0 3px var(--yellow))}
+.zoom{display:flex;align-items:center;gap:8px;font-weight:700}
+.zoom .bar{width:110px;height:6px;border-radius:3px;background:#d8cdeb;position:relative}
+.zoom .bar:after{content:"";position:absolute;left:55%;top:-5px;width:16px;height:16px;border-radius:50%;background:var(--pink)}
+.bubble{position:relative;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.18);width:100%;max-width:240px;text-align:center;font-size:.92rem}
+.bubble:after{content:"";position:absolute;bottom:-9px;left:50%;margin-left:-9px;border:9px solid transparent;border-bottom:0;border-top-color:#fff}
+.bubble .sel{border:2px solid #d8cdeb;border-radius:8px;padding:6px 8px;margin:8px 0;text-align:left;color:var(--muted)}
+.ph{width:52px;height:52px;border-radius:50%;margin:0 auto 6px;background:linear-gradient(135deg,#fbbf24,#f97316);border:3px solid var(--sy);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+.qr{width:96px;height:96px;background:
+ conic-gradient(from 90deg at 50% 50%,#1f1235 25%,#fff 0 50%,#1f1235 0 75%,#fff 0) 0 0/16px 16px;border:6px solid #fff;outline:2px solid var(--ink);border-radius:6px}
+.ok{background:var(--green);color:#fff;font-weight:700;border-radius:999px;padding:8px 16px}
+.pair{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;align-items:center}
+details{background:var(--card);border-radius:14px;padding:12px 16px;margin:10px 0;box-shadow:0 2px 8px rgba(109,40,217,.08)}
+summary{cursor:pointer;font-weight:700}
+details p{margin:8px 0 2px}
+footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:36px}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="p" viewBox="0 0 48 48">
+    <ellipse cx="24" cy="33" rx="19" ry="12" fill="currentColor"/>
+    <circle cx="24" cy="16" r="10" fill="currentColor"/>
+    <circle cx="24" cy="16" r="10" fill="rgba(255,255,255,.28)"/>
+    <ellipse cx="24" cy="33" rx="19" ry="12" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
+  </symbol>
+</svg>
+
+<header class="hero">
+  <small>Déboulé 2027 · Mode d'emploi musiciens</small>
+  <h1>KLÉ LA MASS<span>MIZISYEN</span></h1>
+</header>
+
+<div class="wrap">
+
+  <p class="intro">Cette appli te permet de choisir toi-même ta place dans la formation du déboulé : 5 musiciens par rangée, chacun sa case. Ce guide t'explique tout, écran par écran.</p>
+
+  <div class="url">
+    <b>Adresse de l'appli</b>
+    <a href="https://opportunity971.github.io/verification-kle-la/formation-defile.html">opportunity971.github.io/verification-kle-la/formation-defile.html</a>
+  </div>
+
+  <div class="test">
+    <b>🧪 Phase de test (reprise du 10 octobre).</b> Pour ce premier test grandeur nature, <b>il n'y a pas de code secret</b> : il suffit de taper ton prénom, puis ton nom. Le code personnel à 4 chiffres sera mis en place plus tard, on te préviendra.
+  </div>
+
+  <nav class="nav">
+    <a href="#musicien">Pas à pas</a>
+    <a href="#faq">Questions fréquentes</a>
+  </nav>
+
+  <h2 id="musicien">Pas à pas</h2>
+
+  <section class="step">
+    <h3><span class="num">1</span> Te connecter</h3>
+    <p>Ouvre l'adresse de l'appli sur ton téléphone ou ton ordinateur. Sur l'écran d'entrée, tape ton <b>prénom</b>, puis ton <b>nom</b>, tels qu'ils sont sur la liste des musiciens, puis touche <b>Entrer</b>.</p>
+    <p>Dès les premières lettres, ton nom apparaît en suggestion. Touche-le pour le choisir.</p>
+    <div class="mock">
+      <div class="phone-title">KLÉ LA MASS<i>MIZISYEN</i></div>
+      <div class="field"><em>Prénom puis nom</em>Jean Dupont</div>
+      <div class="btn">Entrer</div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h3><span class="num">2</span> Lire le plan</h3>
+    <p>Chaque ligne est une rangée du déboulé, numérotée à gauche. Chaque silhouette vue de dessus est une place. La couleur montre l'instrument.</p>
+    <div class="legend">
+      <span><i style="background:var(--ba)"></i>Basse (BA)</span>
+      <span><i style="background:var(--cb)"></i>Contrebasse (CB)</span>
+      <span><i style="background:var(--tc)"></i>Tambours chan (TC)</span>
+      <span><i style="background:var(--ko)"></i>Konk (KO)</span>
+      <span><i style="background:var(--cc)"></i>Chacha (CC)</span>
+      <span><i style="background:var(--sy)"></i>Siyak (SY)</span>
+      <span><i style="background:var(--cl)"></i>Clave (CL)</span>
+      <span><i style="background:#9ca3af"></i>Place bloquée 🔒</span>
+    </div>
+    <p>Une silhouette <b>plus sombre et grisée</b> est déjà prise. Une silhouette <b>vive</b> est libre. Sur une place prise, la photo du musicien apparaît dans la tête.</p>
+    <p>Pour zoomer, utilise le curseur de zoom, les boutons − et +, ou pince l'écran avec deux doigts.</p>
+    <div class="mock">
+      <div class="grid">
+        <div class="lbl" style="color:var(--sy)">Siyak</div>
+        <div class="row"><span class="rn">1</span>
+          <div class="seat sy taken"><svg><use href="#p"/></svg><b>SY</b></div>
+          <div class="seat sy taken"><svg><use href="#p"/></svg><b>SY</b></div>
+          <div class="seat sy free"><svg><use href="#p"/></svg><b>SY</b></div>
+          <div class="seat sy free"><svg><use href="#p"/></svg><b>SY</b></div>
+          <div class="seat sy free"><svg><use href="#p"/></svg><b>SY</b></div>
+        </div>
+        <div class="row"><span class="rn">2</span>
+          <div class="seat tc taken"><svg><use href="#p"/></svg><b>TC</b></div>
+          <div class="seat tc taken"><svg><use href="#p"/></svg><b>TC</b></div>
+          <div class="seat tc taken"><svg><use href="#p"/></svg><b>TC</b></div>
+          <div class="seat tc free"><svg><use href="#p"/></svg><b>TC</b></div>
+          <div class="seat locked"><svg><use href="#p"/></svg><b>🔒</b></div>
+        </div>
+        <div class="lbl" style="color:var(--muted)">Instrument au choix</div>
+        <div class="row"><span class="rn">3</span>
+          <div class="seat cl taken"><svg><use href="#p"/></svg><b>CL</b></div>
+          <div class="seat ba taken"><svg><use href="#p"/></svg><b>BA</b></div>
+          <div class="seat free" style="--c:#c9bfd9"><svg><use href="#p"/></svg></div>
+          <div class="seat free" style="--c:#c9bfd9"><svg><use href="#p"/></svg></div>
+          <div class="seat free" style="--c:#c9bfd9"><svg><use href="#p"/></svg></div>
+        </div>
+      </div>
+      <div class="zoom">Zoom &nbsp;−<span class="bar"></span>+</div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h3><span class="num">3</span> Réserver ta place</h3>
+    <p>Touche une silhouette libre. Une <b>bulle</b> s'ouvre juste au-dessus.</p>
+    <p>Si la rangée a un instrument imposé par les organisateurs, il est déjà choisi pour toi. Sinon, un <b>menu</b> te laisse choisir ton instrument. Touche ensuite <b>Réserver cette place</b>.</p>
+    <p>Ta silhouette prend la couleur de ton instrument et ta photo apparaît dans la tête.</p>
+    <div class="tip">Tu ne peux réserver <b>qu'une seule place</b>. Pour en changer, libère d'abord la première.</div>
+    <div class="mock">
+      <div class="bubble">
+        <b>Rangée 3 · place libre</b>
+        <div class="sel">Choisis ton instrument ▾</div>
+        <div class="btn">Réserver cette place</div>
+      </div>
+      <div class="seat free" style="--c:#c9bfd9;margin-top:6px"><svg><use href="#p"/></svg></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h3><span class="num">4</span> Voir ou libérer ta place</h3>
+    <p>Ta place est entourée d'une lueur jaune. Touche-la : la bulle affiche ton nom, ton instrument, et <b>Libérer ma place</b>.</p>
+    <p>Quand tu libères, la place redevient disponible pour les autres. Si la rangée avait un instrument imposé, il reste affiché.</p>
+    <p>Touche la place d'un autre musicien : tu vois son nom et son instrument, sans pouvoir la modifier.</p>
+    <div class="mock">
+      <div class="bubble">
+        <div class="ph">JD</div>
+        <b>Jean Dupont</b><br>Tambour chan
+        <div class="btn off" style="margin-top:8px">Libérer ma place</div>
+      </div>
+      <div class="seat tc mine" style="margin-top:6px"><svg><use href="#p"/></svg><b>TC</b></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h3><span class="num">5</span> Pointer ta présence en répétition</h3>
+    <p>Pendant la répétition, un organisateur affiche un <b>QR code</b> en grand sur un écran. Scanne-le avec l'<b>appareil photo de ton téléphone</b> : l'appli s'ouvre.</p>
+    <p>Si tu n'es pas déjà connecté, saisis ton prénom, puis ton nom. Le message <b>« Présence enregistrée »</b> s'affiche. Si tu as déjà pointé, tu vois « Déjà pointé(e) ».</p>
+    <p>Le QR se renouvelle toutes les 30 secondes. Une photo de l'écran envoyée à un absent ne sert donc à rien : il faut être sur place.</p>
+    <p>Le nombre de répétitions auxquelles tu as assisté apparaît dans la bulle de ta propre place. Les autres musiciens ne le voient pas.</p>
+    <div class="mock">
+      <div class="pair">
+        <div style="text-align:center"><div class="qr"></div><small>Répétition du jour<br>Scanne avec l'appareil photo</small></div>
+        <div class="ok">✔ Présence enregistrée</div>
+      </div>
+    </div>
+  </section>
+
+  <h2 id="faq">Questions fréquentes</h2>
+
+  <details>
+    <summary>Mon nom n'est pas accepté</summary>
+    <p>Écris ton prénom, puis ton nom, comme sur la liste, avec les accents. Utilise la suggestion qui apparaît en tapant. Si ton nom n'apparaît pas, tu n'es peut-être pas encore sur la liste : préviens un organisateur.</p>
+  </details>
+  <details>
+    <summary>Pourquoi on ne me demande pas de code ?</summary>
+    <p>Pendant la phase de test, l'accès se fait avec ton prénom et ton nom seulement. Le code personnel à 4 chiffres viendra plus tard : on te le communiquera à ce moment-là.</p>
+  </details>
+  <details>
+    <summary>Je vois un cadenas sur une place</summary>
+    <p>La place est bloquée par les organisateurs. Elle n'est pas réservable.</p>
+  </details>
+  <details>
+    <summary>Je veux changer de place</summary>
+    <p>Touche ta place, choisis <b>Libérer ma place</b>, puis réserve la nouvelle.</p>
+  </details>
+  <details>
+    <summary>La bulle ne s'ouvre pas ou se ferme toute seule</summary>
+    <p>Recharge la page et réessaie. Si le problème continue, préviens un organisateur en précisant ton téléphone et ton navigateur.</p>
+  </details>
+  <details>
+    <summary>Ma place réservée a disparu</summary>
+    <p>Un organisateur a pu supprimer la rangée ou modifier la formation. Reviens sur le plan et choisis une nouvelle place.</p>
+  </details>
+
+  <footer>Klé la Mass · Mizisyen · Déboulé 2027</footer>
+</div>
+</body>
+</html>
