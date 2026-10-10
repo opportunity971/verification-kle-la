@@ -472,9 +472,12 @@ $('#stage').addEventListener('click', e => {
   if (moving || Date.now() < dragEnd) return;
   const g = e.target.closest('.seat'); if (!g) return;
   const [arcId, k] = g.dataset.seat.split(':');
-  if (sel && sel.arcId === arcId && sel.k === +k) { closePop(); return; }
-  sel = { arcId, k: +k }; full = false; render();
+  openSeat(arcId, +k);
 });
+function openSeat(arcId, k){
+  if (sel && sel.arcId === arcId && sel.k === k) { closePop(); return; }
+  sel = { arcId, k }; full = false; render();
+}
 /* ---- déplacer les places (organisateur) ---- */
 function setMoving(v){
   moving = v && isOrga();
@@ -512,17 +515,20 @@ $('#stage').addEventListener('pointerdown', e => {
   e.preventDefault();
   const svg = $('#stage'), m = /translate\(([-\d.]+),([-\d.]+)\)/.exec(g.getAttribute('transform')), p = svgPt(svg, e);
   const [arcId, k] = g.dataset.seat.split(':'); const arc = state.arcs.find(a => a.id === arcId), seat = arc.seats[+k];
-  drag = { g, svg, arcId, k: +k, ox: +m[1] - p.x, oy: +m[2] - p.y, x: +m[1], y: +m[2], bx: +m[1] - (seat.dx || 0), by: +m[2] - (seat.dy || 0) };
+  drag = { sx: e.clientX, sy: e.clientY, moved: false, g, svg, arcId, k: +k, ox: +m[1] - p.x, oy: +m[2] - p.y, x: +m[1], y: +m[2], bx: +m[1] - (seat.dx || 0), by: +m[2] - (seat.dy || 0) };
   try { svg.setPointerCapture(e.pointerId); } catch (x) {}
   g.style.opacity = .85;
 });
 $('#stage').addEventListener('pointermove', e => {
-  if (!drag) return; const p = svgPt(drag.svg, e), vb = drag.svg.viewBox.baseVal;
+  if (!drag) return; if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return; drag.moved = true;
+  const p = svgPt(drag.svg, e), vb = drag.svg.viewBox.baseVal;
   drag.x = Math.max(12, Math.min(vb.width - 12, p.x + drag.ox)); drag.y = Math.max(12, Math.min(vb.height - 12, p.y + drag.oy));
   drag.g.setAttribute('transform', `translate(${drag.x.toFixed(1)},${drag.y.toFixed(1)})`);
 });
 async function endDrag(){
-  if (!drag) return; const d = drag; drag = null; d.g.style.opacity = ''; dragEnd = Date.now() + 300;
+  if (!drag) return; const d = drag; drag = null; d.g.style.opacity = '';
+  if (!d.moved) { dragEnd = Date.now() + 300; return openSeat(d.arcId, d.k); }
+  dragEnd = Date.now() + 300;
   const dx = Math.round(d.x - d.bx), dy = Math.round(d.y - d.by);
   await orgaEdit(st => { st.free = true; const sx = st.arcs.find(a => a.id === d.arcId).seats[d.k]; if (dx || dy) { sx.dx = dx; sx.dy = dy; } else { delete sx.dx; delete sx.dy; } });
 }
