@@ -440,7 +440,7 @@ function renderPop(){
       if (g) h += `${chip}`;
       if (!me) h += '<div style="margin:6px 0">Connecte-toi pour réserver cette place.</div><button class="btn" data-act="login">Me connecter</button>';
       else {
-        if (!arc.groupId && !seat.fixed) h += `<select id="pg"><option value="">Choisis ton instrument / ta voix</option>${groupOptions(arc, '')}</select>`;
+        if (!arc.groupId && !seat.fixed) h += `<select id="pg"><option value="">Mon instrument / ma voix…</option>${groupOptions(arc, '')}</select>`;
         h += '<button class="btn" data-act="reserve">Réserver cette place</button>';
       }
     }
@@ -455,8 +455,17 @@ function positionPop(){
   const el = $('#stage').querySelector(`[data-seat="${sel.arcId}:${sel.k}"]`); if (!el) return;
   const r = el.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight, cxm = r.left + r.width / 2;
   const left = Math.max(8, Math.min(innerWidth - w - 8, cxm - w / 2));
+  const room = innerHeight - 8;
   let top = r.top - h - 12, below = false;
-  if (top < 8) { top = r.bottom + 12; below = true; }
+  if (top < 8) {
+    if (r.bottom + 12 + h <= room) { top = r.bottom + 12; below = true; }
+    else if (!positionPop._busy) {   // ni au-dessus ni en dessous : on fait défiler la page pour que la bulle tienne
+      positionPop._busy = true;
+      const needUp = 8 - top, needDown = r.bottom + 12 + h - room;
+      scrollBy(0, needUp <= needDown ? -needUp : needDown);
+      requestAnimationFrame(() => { positionPop._busy = false; positionPop(); }); return;
+    } else { top = Math.max(8, Math.min(top, room - h)); }
+  }
   pop.style.left = left + 'px'; pop.style.top = top + 'px';
   pop.style.setProperty('--arrow', Math.max(16, Math.min(w - 16, cxm - left)) + 'px');
   pop.classList.toggle('below', below);
@@ -476,7 +485,11 @@ $('#stage').addEventListener('click', e => {
 });
 function openSeat(arcId, k){
   if (sel && sel.arcId === arcId && sel.k === k) { closePop(); return; }
-  sel = { arcId, k }; full = false; render();
+  sel = { arcId, k }; full = false;
+  // si la place est coupée sur le côté, on recentre le plan dessus avant d'ouvrir la bulle
+  const el = $('#stage').querySelector(`[data-seat="${arcId}:${k}"]`);
+  if (el) { const r = el.getBoundingClientRect(); if (r.left < 24 || r.right > innerWidth - 24) { const w = $('#stageWrap'); w.scrollLeft += (r.left + r.width / 2) - innerWidth / 2; } }
+  render();
 }
 /* ---- déplacer les places (organisateur) ---- */
 function setMoving(v){
@@ -724,7 +737,12 @@ $('#presReset').onclick = () => { if (confirm('Vider toutes les présences pour 
 /* ================== ZOOM ================== */
 let lastW = 1000;
 function applyZoom(){ const el = $('#stageInner'); el.style.width = zoom + '%'; el.style.maxWidth = Math.round(lastW * 1.8 * zoom / 100) + 'px'; }
-function setZoom(z){ zoom = Math.max(60, Math.min(220, z)); $('#zoom').value = zoom; applyZoom(); positionPop(); }
+function setZoom(z){
+  const w = $('#stageWrap'), ratio = w.scrollWidth ? (w.scrollLeft + w.clientWidth / 2) / w.scrollWidth : .5;
+  zoom = Math.max(60, Math.min(220, z)); $('#zoom').value = zoom; applyZoom();
+  w.scrollLeft = ratio * w.scrollWidth - w.clientWidth / 2;   // le zoom reste centré sur ce qu'on regardait
+  positionPop();
+}
 $('#zoom').oninput = e => setZoom(+e.target.value);
 $('#zm').onclick = () => setZoom(zoom - 15); $('#zp').onclick = () => setZoom(zoom + 15);
 $('#stageWrap').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); setZoom(zoom - e.deltaY * 0.15); } }, { passive: false });
@@ -735,8 +753,10 @@ $('#stageWrap').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e
   const r = await api('get');
   serverHasState = !!(r.ok && r.state);
   state = (r.ok && r.state) || defaultState();
+  if (innerWidth < 600) { zoom = 150; $("#zoom").value = zoom; }   // téléphone : plan agrandi, on fait défiler pour se déplacer
   if (PHOTOS_URL) { try { const j = await (await fetch(PHOTOS_URL)).json(); Object.keys(j).forEach(n => photos[key(n)] = j[n]); } catch (e) {} }
   render();
+  if (innerWidth < 600) { const w = $('#stageWrap'); w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2; }
   if (orgaPw) { const c = await api('checkOrga', { password: orgaPw }); if (c.ok) await enterOrga(); else { orgaPw = null; ssSet('scene_pw', null); } }
   if (!me && !isOrga()) openLogin();
   setInterval(async () => {
