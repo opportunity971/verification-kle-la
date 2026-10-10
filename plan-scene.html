@@ -509,7 +509,7 @@ ac.addEventListener('pointerdown', e => { const d = e.target.closest('[data-n]')
 function openLogin(){ $('#lc').value = ''; $('#lerr').textContent = ''; $('#oerr').textContent = ''; $('#opw').value = ''; $('#orgaBox').style.display = 'none'; $('#loginOv').style.display = 'flex'; }
 $('#toOrga').onclick = e => { e.preventDefault(); const b = $('#orgaBox'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; if (b.style.display === 'block') $('#opw').focus(); };
 async function orgaLogin(){
-  const pw = $('#opw').value; if (!pw) { $('#oerr').textContent = 'Entre le mot de passe.'; return; }
+  const pw = $('#opw').value.trim(); if (!pw) { $('#oerr').textContent = 'Entre le mot de passe.'; return; }
   const r = await api('checkOrga', { password: pw });
   if (r.ok) { orgaPw = pw; ssSet('scene_pw', pw); $('#loginOv').style.display = 'none'; await enterOrga(); toast('Mode organisateur'); }
   else $('#oerr').textContent = 'Mot de passe incorrect.';
@@ -529,7 +529,7 @@ $('#lgo').onclick = async () => {
 };
 $('#btnOrga').onclick = async () => {
   if (isOrga()) { orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; sel = null; pop.style.display = 'none'; render(); if (!me) openLogin(); return; }
-  const pw = prompt('Mot de passe organisateur'); if (!pw) return;
+  const pw = (prompt('Mot de passe organisateur') || '').trim(); if (!pw) return;
   const r = await api('checkOrga', { password: pw });
   if (r.ok) { orgaPw = pw; ssSet('scene_pw', pw); await enterOrga(); toast('Mode organisateur'); }
   else toast('Mot de passe incorrect', true);
