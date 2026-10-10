@@ -319,6 +319,7 @@ function human(R, fill, g, o){
   const chest = o.lock ? `<text y="17" text-anchor="middle" font-size="8">🔒</text>` : (ic ? `<g transform="translate(0,14) scale(.32)">${ic(tc)}</g>` : '');
   return `<g transform="scale(${R / 20})"><path class="body" d="M-18 8 C-18 -2 -11 -7 0 -7 C11 -7 18 -2 18 8 C18 13 14 15 10 15.5 C8.5 18.5 4.5 20 0 20 C-4.5 20 -8.5 18.5 -10 15.5 C-14 15 -18 13 -18 8 Z" fill="${fill}" stroke="rgba(255,255,255,.75)" stroke-width="1.6"/>${chest}${head}</g>`;
 }
+function lighten(hex){ const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return '#fff'; const n = parseInt(m[1], 16); const mix = c => Math.round(c + (255 - c) * .55); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(c => mix(c).toString(16).padStart(2, '0')).join(''); }
 function iconBadge(g, px){
   const fill = g ? g.color : '#cfc6e6';
   return `<svg width="${px}" height="${px}" viewBox="-20 -20 40 40" style="flex:none;vertical-align:middle;width:${px}px;height:${px}px"><circle r="19" fill="${esc(fill)}" stroke="rgba(255,255,255,.65)" stroke-width="2"/>${silhouette(20, textColor(fill), fill, g)}</svg>`;
@@ -360,6 +361,7 @@ function render(){
   $('#title').textContent = state.title || ''; $('#subtitle').textContent = state.subtitle || '';
   document.title = (state.title || 'Plan') + ' – ' + (state.subtitle || 'scène');
   const G = geometry(), R = G.seatR; let s = '<defs><clipPath id="seatclip"><circle r="20"/></clipPath></defs>';
+  if (moving || state.free) s += `<rect x="6" y="6" width="${G.W - 12}" height="${G.H - 12}" rx="22" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.55)" stroke-width="2.5" stroke-dasharray="10 7"/><text x="22" y="28" fill="rgba(255,255,255,.6)" font-size="12" font-weight="800" letter-spacing="3">SCÈNE</text>`;
   if (!moving && !state.free) s += `<path d="M${G.cx - 55} ${G.cy} a55 55 0 0 1 110 0 Z" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.4)"/>`;
   s += `<rect x="${G.cx - 120}" y="${G.cy + 30}" width="240" height="28" rx="14" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.35)"/><text x="${G.cx}" y="${G.cy + 49}" text-anchor="middle" fill="#fff" font-size="14" font-weight="800" letter-spacing="4">PUBLIC</text>`;
   if (!moving && !state.free) state.arcs.forEach((arc, i) => { if (arc.special) return; const r = G.arcs[i].r; s += `<path d="M${G.cx - r} ${G.cy} A${r} ${r} 0 0 1 ${G.cx + r} ${G.cy}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="${R * 2 + 6}"/>`; });
@@ -373,7 +375,8 @@ function render(){
       const ph = taken ? photoOf(seat.name) : null, cid = `c${i}_${k}`;
       const inner = human(R, fill, blockedFree ? null : g, { photo: ph, init: taken && !ph ? initials(seat.name) : '', cid, lock: blockedFree });
       s += `<g class="seat${taken ? ' taken' : ''}${mine ? ' mine' : ''}${isSel ? ' sel' : ''}" data-seat="${arc.id}:${k}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><circle r="${R}" fill="transparent"/>${inner}<circle class="ring" r="${R + 1}"/>`;
-      if ((taken || arc.special) && g && R >= 11) s += `<text y="${R + 11}" text-anchor="middle" fill="${g.color}" stroke="rgba(0,0,0,.45)" stroke-width="2.5" paint-order="stroke" font-size="${Math.max(8, Math.min(11, R * 0.5)).toFixed(1)}" font-weight="800">${esc(g.name.replace(/\s*\(.*\)\s*$/, ''))}</text>`;
+      const lab = g ? g.name.replace(/\s*\(.*\)\s*$/, '') : (arc.kind === 'choeur' && !blockedFree ? 'Chœur' : '');
+      if (lab && R >= 11) s += `<text y="${R + 11}" text-anchor="middle" fill="${g ? lighten(g.color) : '#e6e0f5'}" stroke="rgba(0,0,0,.55)" stroke-width="2.5" paint-order="stroke" font-size="${Math.max(8, Math.min(11, R * 0.5)).toFixed(1)}" font-weight="800">${esc(lab)}</text>`;
       if (taken && isPresent(seat.name)) s += `<g transform="translate(${R * 0.72},${-R * 0.72})"><circle r="${Math.max(5, R * 0.4)}" fill="#00c389" stroke="#fff" stroke-width="1.5"/><text y="${Math.max(5, R * 0.4) * 0.38}" text-anchor="middle" fill="#fff" font-size="${Math.max(7, R * 0.55)}" font-weight="900">✓</text></g>`;
       s += '</g>';
     });
@@ -481,7 +484,27 @@ function setMoving(v){
   if (moving) { sel = null; pop.style.display = 'none'; }
   render();
 }
-$('#moveMode').onclick = () => setMoving(!moving);
+// Première fois : musiciens d'un côté (gauche), choeurs de l'autre (droite), chef au centre en bas
+function autoLayout(){
+  const G = geometry(), cell = Math.max(48, G.seatR * 3), cols = 4, offs = {};
+  const place = (list, cx0) => list.forEach((it, n) => {
+    const c = n % cols, r = Math.floor(n / cols);
+    const tx = cx0 + (c - (cols - 1) / 2) * cell, ty = 80 + r * (cell + 6);
+    const cur = G.arcs[it.i].pos[it.k], seat = state.arcs[it.i].seats[it.k];
+    offs[state.arcs[it.i].id + ':' + it.k] = [Math.round(tx - (cur.x - (seat.dx || 0))), Math.round(ty - (cur.y - (seat.dy || 0)))];
+  });
+  const mus = [], cho = [];
+  state.arcs.forEach((a, i) => { if (a.special) return; a.seats.forEach((x, k) => (a.kind === 'musicien' ? mus : cho).push({ i, k })); });
+  place(mus, G.W * 0.26); place(cho, G.W * 0.74);
+  const ci = state.arcs.findIndex(a => a.special);
+  if (ci >= 0) { const cur = G.arcs[ci].pos[0], seat = state.arcs[ci].seats[0]; offs[state.arcs[ci].id + ':0'] = [Math.round(G.W / 2 - (cur.x - (seat.dx || 0))), Math.round((G.H - 110) - (cur.y - (seat.dy || 0)))]; }
+  return orgaEdit(st => { st.free = true; st.arcs.forEach(a => a.seats.forEach((x, k) => { const o = offs[a.id + ':' + k]; if (o) { x.dx = o[0]; x.dy = o[1]; } })); });
+}
+$('#moveMode').onclick = async () => {
+  if (!moving && !state.free && !confirm('Les musiciens seront placés à gauche et les choeurs à droite, puis tu pourras déplacer chaque silhouette. Continuer ?')) return;
+  if (!moving && !state.free) await autoLayout();
+  setMoving(!moving);
+};
 $('#resetPos').onclick = () => { if (confirm('Remettre toutes les places à leur position d\'origine (demi-cercle) ?')) orgaEdit(st => { delete st.free; st.arcs.forEach(a => a.seats.forEach(x => { delete x.dx; delete x.dy; })); }); };
 const svgPt = (svg, e) => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
 $('#stage').addEventListener('pointerdown', e => {
