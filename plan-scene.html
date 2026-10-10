@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plan de scène</title>
+<style>
+:root{--yellow:#ffd400;--pink:#ff2e93;--orange:#ff7a00;--green:#00c389;--bg1:#2b0f4a;--bg2:#12041f}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;background:linear-gradient(160deg,var(--bg1),var(--bg2)) fixed;min-height:100vh}
+header{text-align:center;padding:18px 12px 4px}
+h1{margin:0;font-size:clamp(34px,8vw,68px);font-weight:900;letter-spacing:2px;color:var(--yellow);text-shadow:3px 3px 0 var(--pink),6px 6px 0 var(--orange)}
+.sub{font-size:clamp(16px,3.5vw,26px);font-weight:800;letter-spacing:6px;color:#fff;margin-top:8px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;padding:10px}
+button,select,input,textarea{font:inherit}
+.btn{border:0;border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer;background:var(--yellow);color:#2b0f4a}
+.btn.alt{background:rgba(255,255,255,.15);color:#fff}
+.btn.pink{background:var(--pink);color:#fff}
+.btn.sm{padding:4px 10px;font-size:13px}
+.banner{background:var(--yellow);color:#2b0f4a;text-align:center;font-weight:700;padding:6px;font-size:14px}
+#layout{display:grid;grid-template-columns:1fr 310px;gap:16px;padding:8px 16px 40px;max-width:1400px;margin:auto}
+@media(max-width:900px){#layout{grid-template-columns:1fr;padding:8px}}
+#stageWrap{background:rgba(255,255,255,.06);border-radius:18px;overflow:auto;padding:8px}
+#stageInner{margin:auto}
+#stage{display:block;width:100%;height:auto;touch-action:manipulation}
+.seat{cursor:pointer}
+.seat.taken .body{filter:saturate(.55) brightness(.8)}
+.seat.mine .ring{stroke:var(--yellow);stroke-width:4}
+.seat.sel .ring{stroke:#fff;stroke-width:3}
+.ring{fill:none;stroke:rgba(255,255,255,.55);stroke-width:1.5}
+.seat:hover .ring{stroke:#fff;stroke-width:3}
+.arclabel{fill:#ddd;font-size:11px;font-weight:700;letter-spacing:1px}
+.side{background:rgba(255,255,255,.08);border-radius:18px;padding:14px}
+.side h3{margin:0 0 8px;color:var(--yellow);font-size:16px}
+.leg{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:14px}
+.dot{width:16px;height:16px;border-radius:50%;flex:none;border:2px solid rgba(255,255,255,.6)}
+.leg .n{margin-left:auto;font-weight:800}
+.total{font-size:18px;font-weight:900;margin:6px 0 12px;color:var(--green)}
+details{margin-top:12px;background:rgba(0,0,0,.25);border-radius:12px;padding:8px 10px}
+summary{cursor:pointer;font-weight:800;color:var(--yellow)}
+.row{display:flex;gap:6px;align-items:center;margin:6px 0;flex-wrap:wrap}
+.row input[type=text],.row input:not([type]),.row select,details textarea{background:#fff;color:#222;border:0;border-radius:8px;padding:5px 8px;min-width:0}
+.row input[type=number]{width:62px;background:#fff;color:#222;border:0;border-radius:8px;padding:5px}
+.row input[type=color]{width:34px;height:30px;padding:0;border:0;background:none}
+details textarea{width:100%;min-height:70px}
+#pop{position:fixed;z-index:50;display:none;width:240px;background:#fff;color:#222;border-radius:14px;padding:12px;box-shadow:0 8px 30px rgba(0,0,0,.5);font-size:14px}
+#pop.wide{width:272px}
+#pop::after{content:"";position:absolute;left:var(--arrow,50%);bottom:-8px;margin-left:-8px;border:8px solid transparent;border-bottom:0;border-top-color:#fff}
+#pop.below::after{bottom:auto;top:-8px;border-top:0;border-bottom:8px solid #fff;border-top-color:transparent}
+#pop .ph{font-size:12px;color:#777;margin-bottom:6px;font-weight:700}
+#pop .nm{font-weight:900;font-size:16px;margin:4px 0}
+#pop .chip{display:inline-block;border-radius:999px;padding:2px 10px;font-weight:800;font-size:12px}
+#pop img{width:56px;height:56px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 6px;border:3px solid #ccc}
+#pop select,#pop input{width:100%;margin:5px 0;padding:6px 8px;border:1px solid #bbb;border-radius:8px;color:#222;background:#fff}
+#pop .btn{width:100%;margin-top:6px}
+#pop label{display:flex;gap:6px;align-items:center;font-size:13px}
+#pop label input{width:auto;margin:0}
+.ov{position:fixed;inset:0;background:rgba(10,0,25,.85);z-index:80;display:none;align-items:center;justify-content:center;padding:16px}
+.card{background:#fff;color:#222;border-radius:18px;padding:20px;width:100%;max-width:360px}
+.card h2{margin:0 0 10px;color:#5b1a8a}
+.card input{width:100%;margin:5px 0;padding:10px;border:1px solid #bbb;border-radius:10px;color:#222}
+.err{color:#c00;font-size:13px;min-height:18px}
+#ac{position:fixed;z-index:99;background:#fff;color:#222;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.4);display:none;max-height:200px;overflow:auto}
+#ac div{padding:7px 10px;cursor:pointer;font-size:14px}
+#ac div:hover{background:#ffe9a8}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:999px;z-index:120;display:none;font-weight:700}
+#toast.bad{background:#c62828}
+.small{font-size:12px;opacity:.8}
+.rl{max-height:180px;overflow:auto;font-size:13px}
+.rl div{display:flex;justify-content:space-between;padding:2px 0}
+.rl button{background:none;border:0;color:#ff8a8a;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="banner" id="demoBanner" style="display:none">MODE DÉMO : les données restent sur cet appareil · mot de passe organisateur : demo · renseigner API_URL pour le mode réel</div>
+<header>
+  <h1 id="title">KLÉ LA MASS</h1>
+  <div class="sub" id="subtitle">PLAN DE SCÈNE</div>
+</header>
+<div class="bar">
+  <button class="btn" id="btnLogin">👤 Je me connecte</button>
+  <button class="btn pink" id="btnPresent" style="display:none">✋ Je suis présent</button>
+  <button class="btn alt" id="btnOrga">🔑 Organisateur</button>
+  <span style="display:inline-flex;gap:6px;align-items:center">
+    <button class="btn alt sm" id="zm">−</button>
+    <input type="range" id="zoom" min="60" max="220" value="100" style="width:110px">
+    <button class="btn alt sm" id="zp">+</button>
+  </span>
+  <span id="who" class="small"></span>
+</div>
+<div id="layout">
+  <div id="stageWrap"><div id="stageInner"><svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg></div></div>
+  <aside class="side">
+    <h3>Places réservées</h3>
+    <div class="total" id="total"></div>
+    <div id="presInfo" style="margin:-6px 0 12px;font-weight:800"></div>
+    <div id="legend"></div>
+    <div id="admin" style="display:none">
+      <details open><summary>Titre</summary>
+        <div class="row"><input type="text" id="tTitle" placeholder="Titre"></div>
+        <div class="row"><input type="text" id="tSub" placeholder="Sous-titre"><button class="btn sm" id="tOk">OK</button></div>
+      </details>
+      <details><summary>Pointage des présences</summary>
+        <div class="row"><input type="text" id="sessLbl" placeholder="Séance (ex. Répétition 10/10)"><button class="btn sm" id="sessOk">OK</button></div>
+        <div class="row"><button class="btn sm" id="presToggle">Ouvrir le pointage</button></div>
+        <div class="row"><button class="btn sm pink" id="presReset">Nouvelle séance (vider les présences)</button></div>
+        <div class="small">Les participants ne peuvent pointer que quand le pointage est ouvert : ouvre-le au début de la répétition et ferme-le ensuite.</div>
+      </details>
+      <details><summary>Zones (arcs)</summary>
+        <div id="arcsEd"></div>
+        <button class="btn sm" id="addArc">＋ Ajouter un arc</button>
+        <div class="small" style="margin-top:6px">Type : limite les choix (musiciens / chœur). Groupe imposé : toutes les places de l'arc ont ce groupe.</div>
+      </details>
+      <details><summary>Groupes (instruments, voix…)</summary>
+        <div id="grpEd"></div>
+        <button class="btn sm" id="addGrp">＋ Ajouter un groupe</button>
+      </details>
+      <details><summary>Liste des participants</summary>
+        <textarea id="rosterIn" placeholder="Un nom complet par ligne (Prénom Nom)"></textarea>
+        <button class="btn sm" id="rosterAdd">Ajouter à la liste</button>
+        <div class="row"><input type="text" id="rosterQ" placeholder="Rechercher…"></div>
+        <div class="rl" id="rosterList"></div>
+      </details>
+      <details><summary>Outils</summary>
+        <div class="row"><button class="btn sm" id="saveInit">💾 Enregistrer le plan</button></div>
+        <div class="row"><button class="btn sm alt" id="csv">⬇️ Exporter (CSV)</button></div>
+        <div class="row"><button class="btn sm pink" id="resetAll">Réinitialiser toutes les places</button></div>
+        <div class="row"><button class="btn sm pink" id="resetPlan">Remettre la disposition par défaut</button></div>
+      </details>
+    </div>
+  </aside>
+</div>
+
+<div id="pop"></div>
+<div id="ac"></div>
+<div id="toast"></div>
+
+<div class="ov" id="loginOv">
+  <div class="card">
+    <h2>Connexion</h2>
+    <div class="small" style="color:#555">Entre ton prénom et ton nom pour réserver ta place.</div>
+    <input id="lp" placeholder="Prénom" autocomplete="given-name">
+    <input id="ln" placeholder="Nom" autocomplete="family-name">
+    <div class="err" id="lerr"></div>
+    <button class="btn" style="width:100%" id="lgo">Entrer</button>
+    <button class="btn alt" style="width:100%;margin-top:6px;color:#555;background:#eee" id="lskip">Juste regarder</button>
+  </div>
+</div>
+
+<script>
+/* ================== CONFIG ================== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxfWBIB7xN2hnprTg2UG51bvCLm7DFCvtleVbXVEi2yTNyTENRjsF5YsnsZbqHgoaDlsw/exec';      // URL de l'application web Google Apps Script (vide = mode démo)
+const PHOTOS_URL = '';   // optionnel : photos.json  { "Prénom Nom": "https://..." }
+
+/* ================== OUTILS ================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const key = s => norm(s).split(' ').filter(Boolean).sort().join(' ');
+const uid = () => 'a' + Math.random().toString(36).slice(2, 8);
+const clone = o => JSON.parse(JSON.stringify(o));
+function textColor(hex){
+  const h = (hex || '#888').replace('#', ''); const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return l > 0.62 ? '#2b0f4a' : '#fff';
+}
+function initials(name){ const t = String(name).trim().split(/\s+/); return ((t[0] || '')[0] || '').toUpperCase() + ((t.length > 1 ? t[t.length - 1][0] : '') || '').toUpperCase(); }
+let toastT;
+function toast(m, bad){ const t = $('#toast'); t.textContent = m; t.className = bad ? 'bad' : ''; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 2600); }
+const mem = {};
+function lsGet(k){ try { return localStorage.getItem(k); } catch (e) { return mem[k] || null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); } catch (e) { mem[k] = v; } }
+function ssGet(k){ try { return sessionStorage.getItem(k); } catch (e) { return mem['s' + k] || null; } }
+function ssSet(k, v){ try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) { mem['s' + k] = v; } }
+
+/* ================== ÉTAT PAR DÉFAUT ================== */
+function defaultState(){
+  const G = [
+    ['boula','Boula (tambour ka)','BO','#e53935','musicien'],
+    ['make','Makè (ka solo)','MK','#ffb300','musicien'],
+    ['tibwa','Ti bwa','TB','#00897b','musicien'],
+    ['siyak','Siyak','SI','#ff7a00','musicien'],
+    ['clave','Clave','CL','#ff2e93','musicien'],
+    ['chacha','Chacha','CH','#3949ab','musicien'],
+    ['konga','Konga','KG','#8d6e63','musicien'],
+    ['clavier','Clavier','CV','#00acc1','musicien'],
+    ['soprano','Soprano','SO','#f48fb1','choeur'],
+    ['alto','Alto','AL','#ab47bc','choeur'],
+    ['tenor','Ténor','TE','#26c6da','choeur'],
+    ['basse','Basse','BA','#66bb6a','choeur']
+  ].map(([id, name, sigle, color, kind]) => ({ id, name, sigle, color, kind }));
+  const mus = ['boula','boula','boula','make','tibwa','siyak','clave','clave','chacha','chacha','konga','clavier']
+    .map(g => ({ name: '', group: g, fixed: true, blocked: false }));
+  const mk = n => Array.from({ length: n }, () => ({ name: '', group: '', fixed: false, blocked: false }));
+  const cho1 = mk(7), cho2 = mk(9); // 16 choristes sur 2 arcs
+  return { title: 'KLÉ LA MASS', subtitle: 'PLAN DE SCÈNE', presenceOpen: false, session: '', present: {}, groups: G,
+    arcs: [{ id: uid(), groupId: '', kind: 'choeur', seats: cho1 }, { id: uid(), groupId: '', kind: 'choeur', seats: cho2 }, { id: uid(), groupId: '', kind: 'musicien', seats: mus }] };
+}
+
+/* ================== LOGIQUE (partagée avec le mode démo) ================== */
+function logicReserve(st, d){
+  if (!st) return { ok: false, error: "Le plan n'est pas encore configuré." };
+  const arc = st.arcs.find(a => a.id === d.arcId), seat = arc && arc.seats[d.index];
+  if (!seat) return { ok: false, error: 'Place introuvable.' };
+  if (seat.blocked) return { ok: false, error: "Cette place est bloquée par l'organisateur." };
+  if (seat.name) return { ok: false, error: "Cette place vient d'être prise." };
+  const k = key(d.name);
+  for (const a of st.arcs) for (const s of a.seats) if (s.name && key(s.name) === k) return { ok: false, error: "Tu as déjà une place. Libère-la d'abord." };
+  const g = arc.groupId || (seat.fixed ? seat.group : d.group);
+  const grp = st.groups.find(x => x.id === g);
+  if (!grp) return { ok: false, error: 'Choisis ton instrument ou ta voix.' };
+  if (!arc.groupId && !seat.fixed && arc.kind && grp.kind && grp.kind !== arc.kind) return { ok: false, error: "Ce choix n'est pas possible dans cette zone." };
+  seat.name = d.name; if (!arc.groupId && !seat.fixed) seat.group = g;
+  return { ok: true, state: st };
+}
+function logicRelease(st, d){
+  const arc = st && st.arcs.find(a => a.id === d.arcId), seat = arc && arc.seats[d.index];
+  if (!seat || !seat.name || key(seat.name) !== key(d.name)) return { ok: false, error: "Ce n'est pas ta place." };
+  seat.name = ''; if (!arc.groupId && !seat.fixed) seat.group = '';
+  return { ok: true, state: st };
+}
+
+function logicPresent(st, d){
+  if (!st) return { ok: false, error: "Le plan n'est pas encore configuré." };
+  if (!st.presenceOpen) return { ok: false, error: "Le pointage n'est pas ouvert pour le moment." };
+  st.present = st.present || {}; const k = key(d.name);
+  if (!st.present[k]) st.present[k] = { name: d.name, at: new Date().toISOString() };
+  return { ok: true, state: st };
+}
+
+/* ================== API (réelle ou démo) ================== */
+function demo(action, d){
+  const S = () => JSON.parse(lsGet('scene_demo_state_v3') || 'null');
+  const R = () => JSON.parse(lsGet('scene_demo_roster') || '[]');
+  const saveS = s => lsSet('scene_demo_state_v3', JSON.stringify(s));
+  const saveR = r => lsSet('scene_demo_roster', JSON.stringify(r));
+  const needPw = () => d.password === 'demo';
+  switch (action) {
+    case 'get': { let st = S(); if (!st) { st = defaultState(); saveS(st); } return { ok: true, state: st }; }
+    case 'checkAccess': {
+      const r = R(); const c = r.find(n => key(n) === key(d.name));
+      if (!r.length) return { ok: true, allowed: !!String(d.name).trim(), name: String(d.name).trim() };
+      return { ok: true, allowed: !!c, name: c || d.name };
+    }
+    case 'checkOrga': return { ok: needPw() };
+    case 'reserve': { const st = S(); const r = logicReserve(st, d); if (r.ok) saveS(st); return r; }
+    case 'release': { const st = S(); const r = logicRelease(st, d); if (r.ok) saveS(st); return r; }
+    case 'present': { const st = S(); const r = logicPresent(st, d); if (r.ok) saveS(st); return r; }
+    case 'save': if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; saveS(d.state); return { ok: true, state: d.state };
+    case 'roster': return needPw() ? { ok: true, roster: R() } : { ok: false, error: 'Mot de passe incorrect.' };
+    case 'addRoster': { const r = R(); const have = new Set(r.map(key)); (d.names || []).forEach(n => { n = n.trim(); if (n && !have.has(key(n))) { have.add(key(n)); r.push(n); } }); saveR(r); return { ok: true, roster: r }; }
+    case 'removeRoster': { const r = R(); const i = r.findIndex(n => key(n) === key(d.name)); if (i >= 0) r.splice(i, 1); saveR(r); return { ok: true, roster: r }; }
+  }
+  return { ok: false, error: 'Action inconnue.' };
+}
+async function api(action, data){
+  data = data || {};
+  if (!API_URL) return demo(action, data);
+  try {
+    const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action }, data)) });
+    return await r.json();
+  } catch (e) { return { ok: false, error: 'Connexion impossible. Réessaie.' }; }
+}
+
+/* ================== ÉTAT GLOBAL ================== */
+let state = null, roster = [], photos = {}, me = ssGet('scene_me'), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
+const isOrga = () => !!orgaPw;
+const groupOf = (arc, seat) => state.groups.find(g => g.id === (arc.groupId || seat.group)) || null;
+const photoOf = name => photos[key(name)] || null;
+const isPresent = name => !!(state && state.present && state.present[key(name)]);
+
+/* ================== ICÔNES D'INSTRUMENTS ================== */
+// Dessinées dans une boîte de -20 à 20 ; c = couleur de remplissage.
+const ICONS = {
+  drum: c => `<path d="M-9 -9 L-7 13 Q0 17 7 13 L9 -9 Z" fill="${c}"/><ellipse cx="0" cy="-9" rx="9" ry="3.4" fill="${c}" stroke="${c}" stroke-width="1" opacity=".6"/><path d="M-8 -3 L8 -3 M-7.5 4 L7.5 4" stroke="#fff" stroke-width="1.4" opacity=".55"/>`,
+  kasolo: c => ICONS.drum(c) + `<path d="M11 -18 L19 -8" stroke="${c}" stroke-width="3.4" stroke-linecap="round"/>`,
+  konga: c => `<path d="M-8 -12 Q-11 3 -5 15 L5 15 Q11 3 8 -12 Z" fill="${c}"/><ellipse cx="0" cy="-12" rx="8" ry="3" fill="${c}" stroke="${c}" stroke-width="1" opacity=".6"/>`,
+  woodblock: c => `<rect x="-15" y="3" width="30" height="9" rx="3" fill="${c}"/><path d="M-9 -15 L-1 2 M9 -15 L1 2" stroke="${c}" stroke-width="3.6" stroke-linecap="round" fill="none"/>`,
+  shaker: c => `<ellipse cx="0" cy="-4" rx="8" ry="11" fill="${c}"/><rect x="-2.5" y="5" width="5" height="12" rx="2" fill="${c}"/><path d="M-6 -8 L6 -2 M-6 -2 L6 4" stroke="#fff" stroke-width="1.4" opacity=".5"/>`,
+  clave: c => `<path d="M-13 9 L9 -13 M13 9 L-9 -13" stroke="${c}" stroke-width="4.6" stroke-linecap="round" fill="none"/>`,
+  maracas: c => `<circle cx="-7" cy="-6" r="6.5" fill="${c}"/><path d="M-7 0 L-2 15" stroke="${c}" stroke-width="3" stroke-linecap="round"/><circle cx="7" cy="-6" r="6.5" fill="${c}"/><path d="M7 0 L2 15" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`,
+  keys: c => `<rect x="-16" y="-8" width="32" height="18" rx="2" fill="none" stroke="${c}" stroke-width="2.4"/><path d="M-8 -8V10 M0 -8V10 M8 -8V10" stroke="${c}" stroke-width="1.6"/><rect x="-11" y="-8" width="6" height="10" fill="${c}"/><rect x="-3" y="-8" width="6" height="10" fill="${c}"/><rect x="5" y="-8" width="6" height="10" fill="${c}"/>`,
+  mic: c => `<rect x="-5" y="-16" width="10" height="18" rx="5" fill="${c}"/><path d="M-10 -2 Q-10 10 0 10 Q10 10 10 -2" stroke="${c}" stroke-width="2.4" fill="none"/><path d="M0 10 L0 16 M-6 16 L6 16" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`,
+  note: c => `<circle cx="-4" cy="10" r="5.5" fill="${c}"/><path d="M1.5 10 L1.5 -14 Q10 -10 9 -2" stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round"/>`
+};
+const ICON_NAMES = [['', 'Auto'], ['drum', 'Tambour ka'], ['kasolo', 'Ka solo (makè)'], ['konga', 'Konga'], ['woodblock', 'Ti bwa'], ['shaker', 'Siyak'], ['clave', 'Claves'], ['maracas', 'Chacha'], ['keys', 'Clavier'], ['mic', 'Micro'], ['note', 'Note']];
+const ICON_BY_ID = { boula: 'drum', make: 'kasolo', tibwa: 'woodblock', siyak: 'shaker', clave: 'clave', chacha: 'maracas', konga: 'konga', clavier: 'keys' };
+const iconOf = g => (g && ICONS[g.icon] ? g.icon : (g && ICON_BY_ID[g.id]) || (g && g.kind === 'choeur' ? 'mic' : 'note'));
+// Silhouette (tête + épaules) avec l'instrument tenu devant la poitrine
+function silhouette(R, tc, bg, g){
+  const ic = g ? ICONS[iconOf(g)] : null;
+  return `<g clip-path="url(#seatclip)" transform="scale(${R / 20})"><g fill="${tc}" opacity=".93"><circle cx="0" cy="-7" r="6.5"/><path d="M-15 20 C-15 5 -7 0 0 0 C7 0 15 5 15 20 Z"/></g>${ic ? `<g transform="translate(0,10.5) scale(.44)">${ic(bg)}</g>` : ''}</g>`;
+}
+function iconBadge(g, px){
+  const fill = g ? g.color : '#cfc6e6';
+  return `<svg width="${px}" height="${px}" viewBox="-20 -20 40 40" style="flex:none;vertical-align:middle;width:${px}px;height:${px}px"><circle r="19" fill="${esc(fill)}" stroke="rgba(255,255,255,.65)" stroke-width="2"/>${silhouette(20, textColor(fill), fill, g)}</svg>`;
+}
+// petit badge d'instrument sur une place occupée (initiales ou photo)
+function miniIcon(g, R){
+  if (!g || R < 11) return '';
+  const r = R * 0.42, ic = ICONS[iconOf(g)];
+  return `<g transform="translate(${-R * 0.68},${R * 0.68})"><circle r="${r}" fill="#fff" stroke="${esc(g.color)}" stroke-width="1.5"/><g transform="scale(${r / 20 * 0.8})">${ic(g.color)}</g></g>`;
+}
+
+/* ================== GÉOMÉTRIE & RENDU ================== */
+function geometry(){
+  const rMin = 160, n = state.arcs.length;
+  const step = n > 1 ? Math.min(80, (460 - rMin) / (n - 1)) : 0;
+  const rMax = rMin + (n - 1) * step;
+  const cy = rMax + 55, W = Math.max(380, 2 * (rMax + 50)), cx = W / 2;
+  let seatR = 19;
+  const rs = state.arcs.map((arc, i) => rMin + i * step);
+  state.arcs.forEach((arc, i) => { const N = arc.seats.length; if (N > 1) seatR = Math.min(seatR, Math.PI * 0.92 * rs[i] / (N - 1) / 2 - 2); });
+  if (n > 1) seatR = Math.min(seatR, step / 2 - 4);
+  seatR = Math.max(7, seatR);
+  const arcs = state.arcs.map((arc, i) => ({ r: rs[i], pos: arc.seats.map((s, k) => {
+    const N = arc.seats.length, t = N > 1 ? k / (N - 1) : 0.5, a = Math.PI * (1 - (0.04 + 0.92 * t));
+    return { x: cx + rs[i] * Math.cos(a), y: cy - rs[i] * Math.sin(a) };
+  }) }));
+  return { cx, cy, seatR, arcs, W, H: cy + 78 };
+}
+function render(){
+  if (!state) return;
+  $('#title').textContent = state.title || ''; $('#subtitle').textContent = state.subtitle || '';
+  document.title = (state.title || 'Plan') + ' – ' + (state.subtitle || 'scène');
+  const G = geometry(), R = G.seatR; let s = '<defs><clipPath id="seatclip"><circle r="20"/></clipPath></defs>';
+  s += `<path d="M${G.cx - 55} ${G.cy} a55 55 0 0 1 110 0 Z" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.4)"/><text x="${G.cx}" y="${G.cy - 14}" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">🎼 CHEF</text>`;
+  s += `<rect x="${G.cx - 120}" y="${G.cy + 30}" width="240" height="28" rx="14" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.35)"/><text x="${G.cx}" y="${G.cy + 49}" text-anchor="middle" fill="#fff" font-size="14" font-weight="800" letter-spacing="4">PUBLIC</text>`;
+  state.arcs.forEach((arc, i) => { const r = G.arcs[i].r; s += `<path d="M${G.cx - r} ${G.cy} A${r} ${r} 0 0 1 ${G.cx + r} ${G.cy}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="${R * 2 + 6}"/>`; });
+  state.arcs.forEach((arc, i) => {
+    arc.seats.forEach((seat, k) => {
+      const { x, y } = G.arcs[i].pos[k], g = groupOf(arc, seat), taken = !!seat.name;
+      const mine = me && taken && key(seat.name) === key(me);
+      const isSel = sel && sel.arcId === arc.id && sel.k === k;
+      const blockedFree = seat.blocked && !taken;
+      const fill = blockedFree ? '#3b3350' : (g ? g.color : '#cfc6e6'), tc = textColor(fill);
+      const ph = taken ? photoOf(seat.name) : null, cid = `c${i}_${k}`;
+      let inner = '';
+      if (ph) inner = `<clipPath id="${cid}"><circle r="${R - 2}"/></clipPath><image href="${esc(ph)}" x="${-R}" y="${-R}" width="${R * 2}" height="${R * 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
+      else if (taken) inner = `<text y="${R * 0.18}" text-anchor="middle" fill="${tc}" font-size="${Math.max(8, R * 0.72)}" font-weight="900">${esc(initials(seat.name))}</text>`;
+      else if (blockedFree) inner = `<text y="${R * 0.3}" text-anchor="middle" font-size="${R * 0.9}">🔒</text>`;
+      else inner = silhouette(R, tc, fill, g);
+      s += `<g class="seat${taken ? ' taken' : ''}${mine ? ' mine' : ''}${isSel ? ' sel' : ''}" data-seat="${arc.id}:${k}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><circle class="body" r="${R}" fill="${fill}"/>${inner}<circle class="ring" r="${R}"/>`;
+      if (taken) s += miniIcon(g, R);
+      if (taken && g && R >= 11) s += `<text y="${R + 10}" text-anchor="middle" fill="${g.color}" font-size="9" font-weight="800">${esc(g.sigle)}</text>`;
+      if (taken && isPresent(seat.name)) s += `<g transform="translate(${R * 0.72},${-R * 0.72})"><circle r="${Math.max(5, R * 0.4)}" fill="#00c389" stroke="#fff" stroke-width="1.5"/><text y="${Math.max(5, R * 0.4) * 0.38}" text-anchor="middle" fill="#fff" font-size="${Math.max(7, R * 0.55)}" font-weight="900">✓</text></g>`;
+      s += '</g>';
+    });
+    const p0 = G.arcs[i].pos[0];
+    if (p0) { const gname = arc.groupId ? (state.groups.find(g => g.id === arc.groupId) || {}).name : ''; s += `<text class="arclabel" x="${p0.x.toFixed(1)}" y="${(p0.y + R + 20).toFixed(1)}" text-anchor="middle">${i + 1}${gname ? '. ' + esc(gname.toUpperCase()) : ''}</text>`; }
+  });
+  const svg = $('#stage'); svg.setAttribute('viewBox', `0 0 ${G.W} ${G.H}`); svg.innerHTML = s;
+  lastW = G.W; applyZoom();
+  renderLegend();
+  if (sel) renderPop();
+}
+function renderLegend(){
+  const counts = {}; let taken = 0, total = 0;
+  state.arcs.forEach(arc => arc.seats.forEach(seat => {
+    if (seat.blocked && !seat.name) return; total++;
+    if (seat.name) { taken++; const g = groupOf(arc, seat); if (g) counts[g.id] = (counts[g.id] || 0) + 1; }
+  }));
+  $('#total').textContent = `${taken} / ${total} réservées`;
+  const np = Object.keys(state.present || {}).length;
+  $('#presInfo').innerHTML = `✅ ${np} présent${np > 1 ? 's' : ''}${state.session ? ' · ' + esc(state.session) : ''} <span class="small">(pointage ${state.presenceOpen ? 'ouvert' : 'fermé'})</span>`;
+  const bp = $('#btnPresent'); bp.style.display = me ? '' : 'none';
+  bp.textContent = me && isPresent(me) ? '✅ Présence enregistrée' : '✋ Je suis présent';
+  bp.style.opacity = me && isPresent(me) ? .7 : 1;
+  $('#legend').innerHTML = state.groups.map(g => `<div class="leg">${iconBadge(g, 24)}${esc(g.name)} <span class="small">${esc(g.sigle)}</span><span class="n">${counts[g.id] || 0}</span></div>`).join('');
+  $('#who').textContent = me ? 'Connecté : ' + me : (isOrga() ? '' : 'Non connecté');
+  $('#btnLogin').textContent = me ? '👤 ' + me : '👤 Je me connecte';
+  $('#btnOrga').textContent = isOrga() ? '🔓 Organisateur (quitter)' : '🔑 Organisateur';
+}
+
+/* ================== BULLE ================== */
+const pop = $('#pop');
+function findSeat(){ const arc = state.arcs.find(a => a.id === sel.arcId); return arc ? { arc, seat: arc.seats[sel.k], i: state.arcs.indexOf(arc) } : null; }
+function groupOptions(arc, cur){
+  return state.groups.filter(g => !arc.kind || !g.kind || g.kind === arc.kind).map(g => `<option value="${esc(g.id)}"${g.id === cur ? ' selected' : ''}>${esc(g.name)}</option>`).join('');
+}
+function renderPop(){
+  if (!sel) { pop.style.display = 'none'; return; }
+  const f = findSeat(); if (!f || !f.seat) { closePop(); return; }
+  const { arc, seat, i } = f, g = groupOf(arc, seat), taken = !!seat.name, mine = me && taken && key(seat.name) === key(me);
+  let h = `<div class="ph">Arc ${i + 1} · place ${sel.k + 1}</div>`;
+  if (g && !(taken && photoOf(seat.name))) h += `<div style="margin:2px 0 6px">${iconBadge(g, 46)}</div>`;
+  const chip = g ? `<span class="chip" style="background:${esc(g.color)};color:${textColor(g.color)}">${esc(g.name)}</span>` : '';
+  if (isOrga() && full) {
+    h += `${chip}<div style="margin-top:6px">`;
+    h += `<input id="pn" placeholder="Nom du participant" value="${esc(seat.name)}" autocomplete="off">`;
+    if (!arc.groupId) h += `<select id="pg"><option value="">— groupe libre —</option>${state.groups.map(x => `<option value="${esc(x.id)}"${x.id === seat.group ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select><label><input type="checkbox" id="pf"${seat.fixed ? ' checked' : ''}> Imposer ce groupe à la place</label>`;
+    h += `</div><button class="btn" data-act="osave">Enregistrer</button>`;
+    h += `<button class="btn alt" style="color:#444;background:#eee" data-act="oblock">${seat.blocked ? '🔓 Débloquer' : '🔒 Bloquer'}</button>`;
+    if (taken) h += `<button class="btn alt" style="color:#444;background:#eee" data-act="opres">${isPresent(seat.name) ? '❌ Marquer absent' : '✅ Marquer présent'}</button><button class="btn pink" data-act="oclear">Vider la place</button>`;
+    h += `<button class="btn alt" style="color:#444;background:#eee" data-act="simple">← Vue simple</button>`;
+  } else {
+    if (seat.blocked && !taken) h += '<div>🔒 Place réservée par l\'organisateur.</div>';
+    else if (taken) {
+      const ph = photoOf(seat.name); if (ph) h += `<img src="${esc(ph)}" alt="">`;
+      h += `<div class="nm">${esc(seat.name)}</div>${chip}`;
+      if (isPresent(seat.name)) h += '<div style="margin-top:6px;color:#00875f;font-weight:800">✅ Présent</div>';
+      if (mine && !isPresent(seat.name)) h += '<button class="btn" data-act="present">✋ Je suis présent</button>';
+      if (mine) h += '<button class="btn pink" data-act="release">Libérer ma place</button>';
+    } else {
+      if (g) h += `${chip}`;
+      if (!me) h += '<div style="margin:6px 0">Connecte-toi pour réserver cette place.</div><button class="btn" data-act="login">Me connecter</button>';
+      else {
+        if (!arc.groupId && !seat.fixed) h += `<select id="pg"><option value="">Choisis ton instrument / ta voix</option>${groupOptions(arc, '')}</select>`;
+        h += '<button class="btn" data-act="reserve">Réserver cette place</button>';
+      }
+    }
+    if (isOrga()) h += '<button class="btn alt" style="color:#444;background:#eee" data-act="full">⚙️ Modifier</button>';
+  }
+  pop.innerHTML = h; pop.className = (isOrga() && full) ? 'wide' : ''; pop.style.display = 'block';
+  const pn = $('#pn'); if (pn) attachAC(pn);
+  positionPop();
+}
+function positionPop(){
+  if (!sel || pop.style.display === 'none') return;
+  const el = $('#stage').querySelector(`[data-seat="${sel.arcId}:${sel.k}"]`); if (!el) return;
+  const r = el.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight, cxm = r.left + r.width / 2;
+  const left = Math.max(8, Math.min(innerWidth - w - 8, cxm - w / 2));
+  let top = r.top - h - 12, below = false;
+  if (top < 8) { top = r.bottom + 12; below = true; }
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  pop.style.setProperty('--arrow', Math.max(16, Math.min(w - 16, cxm - left)) + 'px');
+  pop.classList.toggle('below', below);
+}
+function closePop(){ sel = null; full = false; pop.style.display = 'none'; ac.style.display = 'none'; render(); }
+addEventListener('scroll', positionPop, true); addEventListener('resize', positionPop);
+document.addEventListener('pointerdown', e => {
+  if (!sel) return; const p = e.composedPath();
+  if (p.includes(pop) || p.includes(ac) || p.some(n => n.classList && n.classList.contains('seat'))) return;
+  closePop();
+}, true);
+$('#stage').addEventListener('click', e => {
+  const g = e.target.closest('.seat'); if (!g) return;
+  const [arcId, k] = g.dataset.seat.split(':');
+  if (sel && sel.arcId === arcId && sel.k === +k) { closePop(); return; }
+  sel = { arcId, k: +k }; full = false; render();
+});
+pop.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b || !sel) return;
+  const act = b.dataset.act, f = findSeat(); if (!f) return;
+  if (act === 'login') return openLogin();
+  if (act === 'full') { full = true; return renderPop(); }
+  if (act === 'simple') { full = false; return renderPop(); }
+  if (act === 'reserve') {
+    const pg = $('#pg'), grp = pg ? pg.value : '';
+    if (pg && !grp) return toast('Choisis ton instrument ou ta voix', true);
+    return result(await api('reserve', { name: me, arcId: sel.arcId, index: sel.k, group: grp }), 'Place réservée ✔');
+  }
+  if (act === 'present') return doPresent();
+  if (act === 'release') return result(await api('release', { name: me, arcId: sel.arcId, index: sel.k }), 'Place libérée');
+  const id = sel.arcId, k = sel.k;
+  if (act === 'osave') { const name = $('#pn').value.trim(), pg = $('#pg'), pf = $('#pf'); return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.name = name; if (pg) { s.group = pg.value; s.fixed = !!(pf && pf.checked && pg.value); } }); }
+  if (act === 'opres') { const nm = f.seat.name; return orgaEdit(st => { st.present = st.present || {}; const k = key(nm); if (st.present[k]) delete st.present[k]; else st.present[k] = { name: nm, at: new Date().toISOString() }; }); }
+  if (act === 'oblock') return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.blocked = !s.blocked; });
+  if (act === 'oclear') return orgaEdit(st => { const a = st.arcs.find(x => x.id === id), s = a.seats[k]; s.name = ''; if (!a.groupId && !s.fixed) s.group = ''; });
+});
+async function doPresent(){
+  if (!me) return openLogin();
+  if (isPresent(me)) return toast('Ta présence est déjà enregistrée ✔');
+  result(await api('present', { name: me }), 'Présence enregistrée ✔');
+}
+$('#btnPresent').onclick = doPresent;
+function result(r, okMsg){
+  if (r.ok) { if (r.state) state = r.state; toast(okMsg); render(); }
+  else toast(r.error || 'Erreur', true);
+}
+async function orgaEdit(fn){
+  const fresh = await api('get'); if (fresh.ok && fresh.state) state = fresh.state;
+  const copy = clone(state); fn(copy);
+  const r = await api('save', { password: orgaPw, state: copy });
+  if (r.ok) { state = r.state || copy; toast('Enregistré ✔'); render(); renderAdmin(); }
+  else toast(r.error || 'Erreur', true);
+}
+
+/* ================== AUTOCOMPLÉTION ================== */
+const ac = $('#ac');
+function attachAC(inp){
+  if (inp._ac) return; inp._ac = 1;
+  inp.addEventListener('input', () => {
+    const q = norm(inp.value); if (!q) { ac.style.display = 'none'; return; }
+    const m = roster.filter(n => norm(n).includes(q)).slice(0, 8);
+    if (!m.length) { ac.style.display = 'none'; return; }
+    ac.innerHTML = m.map(n => `<div data-n="${esc(n)}">${esc(n)}</div>`).join('');
+    const r = inp.getBoundingClientRect(); ac.style.left = r.left + 'px'; ac.style.top = (r.bottom + 2) + 'px'; ac.style.width = r.width + 'px'; ac.style.display = 'block'; ac._inp = inp;
+  });
+  inp.addEventListener('blur', () => setTimeout(() => ac.style.display = 'none', 200));
+}
+ac.addEventListener('pointerdown', e => { const d = e.target.closest('[data-n]'); if (d && ac._inp) { e.preventDefault(); ac._inp.value = d.dataset.n; ac.style.display = 'none'; } });
+
+/* ================== CONNEXIONS ================== */
+function openLogin(){ $('#lerr').textContent = ''; $('#loginOv').style.display = 'flex'; }
+$('#btnLogin').onclick = () => { if (me) { if (confirm('Te déconnecter ?')) { me = null; ssSet('scene_me', null); render(); } } else openLogin(); };
+$('#lskip').onclick = () => $('#loginOv').style.display = 'none';
+$('#lgo').onclick = async () => {
+  const name = ($('#lp').value.trim() + ' ' + $('#ln').value.trim()).trim();
+  if (!$('#lp').value.trim() || !$('#ln').value.trim()) { $('#lerr').textContent = 'Prénom et nom, s\'il te plaît.'; return; }
+  const r = await api('checkAccess', { name });
+  if (r.ok && r.allowed) { me = r.name || name; ssSet('scene_me', me); $('#loginOv').style.display = 'none'; render(); toast('Bienvenue ' + me); }
+  else $('#lerr').textContent = r.error || 'Nom non reconnu. Vérifie l\'orthographe ou préviens un organisateur.';
+};
+$('#btnOrga').onclick = async () => {
+  if (isOrga()) { orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; render(); return; }
+  const pw = prompt('Mot de passe organisateur'); if (!pw) return;
+  const r = await api('checkOrga', { password: pw });
+  if (r.ok) { orgaPw = pw; ssSet('scene_pw', pw); await enterOrga(); toast('Mode organisateur'); }
+  else toast('Mot de passe incorrect', true);
+};
+async function enterOrga(){
+  $('#admin').style.display = 'block';
+  const r = await api('roster', { password: orgaPw }); roster = (r.ok && r.roster) || [];
+  renderAdmin(); render();
+}
+
+/* ================== ADMIN ================== */
+function renderAdmin(){
+  if (!isOrga() || !state) return;
+  $('#tTitle').value = state.title || ''; $('#tSub').value = state.subtitle || '';
+  $('#sessLbl').value = state.session || ''; $('#presToggle').textContent = state.presenceOpen ? '🔴 Fermer le pointage' : '🟢 Ouvrir le pointage';
+  const kinds = [['', 'Tous'], ['musicien', 'Musiciens'], ['choeur', 'Chœur']];
+  $('#arcsEd').innerHTML = state.arcs.map((a, i) => `<div class="row" data-arc="${a.id}"><b>${i + 1}</b>
+    <input type="number" min="1" max="60" value="${a.seats.length}" data-f="n" title="Nombre de places">
+    <select data-f="kind">${kinds.map(([v, l]) => `<option value="${v}"${a.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <select data-f="g"><option value="">Groupe au choix</option>${state.groups.map(g => `<option value="${esc(g.id)}"${a.groupId === g.id ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
+    <button class="btn sm alt" data-f="up">↑</button><button class="btn sm alt" data-f="down">↓</button><button class="btn sm pink" data-f="del">✕</button></div>`).join('');
+  $('#grpEd').innerHTML = state.groups.map(g => `<div class="row" data-g="${esc(g.id)}">
+    <input type="color" value="${esc(g.color)}" data-f="color"><input type="text" value="${esc(g.name)}" data-f="name" style="width:110px"><input type="text" value="${esc(g.sigle)}" data-f="sigle" maxlength="3" style="width:44px">
+    <select data-f="kind">${kinds.map(([v, l]) => `<option value="${v}"${(g.kind || '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <select data-f="icon" title="Illustration">${ICON_NAMES.map(([v, l]) => `<option value="${v}"${(g.icon || '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <button class="btn sm pink" data-f="del">✕</button></div>`).join('');
+  renderRoster();
+}
+function renderRoster(){
+  const q = norm($('#rosterQ').value);
+  $('#rosterList').innerHTML = (roster.length ? '' : '<div class="small">Liste vide : tout nom est accepté.</div>') +
+    roster.filter(n => !q || norm(n).includes(q)).map(n => `<div><span>${esc(n)}</span><span><button data-n="${esc(n)}" data-a="ren">✎</button><button data-n="${esc(n)}" data-a="del">✕</button></span></div>`).join('');
+}
+$('#arcsEd').addEventListener('change', e => {
+  const row = e.target.closest('[data-arc]'); if (!row) return; const id = row.dataset.arc, f = e.target.dataset.f, v = e.target.value;
+  if (f === 'n') {
+    const n = Math.max(1, Math.min(60, +v || 1)), arc = state.arcs.find(a => a.id === id);
+    if (n < arc.seats.length && arc.seats.slice(n).some(s => s.name) && !confirm('Des places occupées seront supprimées. Continuer ?')) { renderAdmin(); return; }
+    orgaEdit(st => { const a = st.arcs.find(x => x.id === id); while (a.seats.length < n) a.seats.push({ name: '', group: '', fixed: false, blocked: false }); a.seats.length = n; });
+  } else if (f === 'kind') orgaEdit(st => { st.arcs.find(x => x.id === id).kind = v; });
+  else if (f === 'g') orgaEdit(st => { st.arcs.find(x => x.id === id).groupId = v; });
+});
+$('#arcsEd').addEventListener('click', e => {
+  const row = e.target.closest('[data-arc]'), f = e.target.dataset.f; if (!row || !f) return; const id = row.dataset.arc;
+  if (f === 'up' || f === 'down') orgaEdit(st => { const i = st.arcs.findIndex(a => a.id === id), j = f === 'up' ? i - 1 : i + 1; if (j >= 0 && j < st.arcs.length) [st.arcs[i], st.arcs[j]] = [st.arcs[j], st.arcs[i]]; });
+  if (f === 'del') { const a = state.arcs.find(x => x.id === id); if (state.arcs.length < 2) return toast('Il faut au moins un arc', true); if (confirm(a.seats.some(s => s.name) ? 'Cet arc contient des réservations. Le supprimer ?' : 'Supprimer cet arc ?')) { if (sel && sel.arcId === id) { sel = null; pop.style.display = 'none'; } orgaEdit(st => { st.arcs = st.arcs.filter(x => x.id !== id); }); } }
+});
+$('#addArc').onclick = () => orgaEdit(st => st.arcs.push({ id: uid(), groupId: '', kind: '', seats: Array.from({ length: 12 }, () => ({ name: '', group: '', fixed: false, blocked: false })) }));
+$('#grpEd').addEventListener('change', e => {
+  const row = e.target.closest('[data-g]'); if (!row) return; const id = row.dataset.g, f = e.target.dataset.f, v = e.target.value;
+  if (['color', 'name', 'sigle', 'kind', 'icon'].includes(f)) orgaEdit(st => { st.groups.find(g => g.id === id)[f] = f === 'sigle' ? v.toUpperCase() : v; });
+});
+$('#grpEd').addEventListener('click', e => {
+  const row = e.target.closest('[data-g]'); if (!row || e.target.dataset.f !== 'del') return; const id = row.dataset.g;
+  if (state.arcs.some(a => a.groupId === id || a.seats.some(s => s.group === id))) return toast('Ce groupe est utilisé dans le plan', true);
+  if (confirm('Supprimer ce groupe ?')) orgaEdit(st => { st.groups = st.groups.filter(g => g.id !== id); });
+});
+$('#addGrp').onclick = () => orgaEdit(st => st.groups.push({ id: uid(), name: 'Nouveau', sigle: 'NV', color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0'), kind: '' }));
+$('#tOk').onclick = () => orgaEdit(st => { st.title = $('#tTitle').value; st.subtitle = $('#tSub').value; });
+$('#saveInit').onclick = () => orgaEdit(() => {});
+$('#resetPlan').onclick = () => { if (confirm('Remettre toute la disposition par défaut (2 arcs de chœurs près du chef, musiciens derrière) ? Les réservations et présences seront effacées.')) orgaEdit(st => { const d = defaultState(); Object.keys(st).forEach(k => delete st[k]); Object.assign(st, d); sel = null; }); };
+$('#resetAll').onclick = () => { if (confirm('Vider TOUTES les places (noms, blocages) ?')) orgaEdit(st => st.arcs.forEach(a => a.seats.forEach(s => { s.name = ''; s.blocked = false; if (!s.fixed) s.group = ''; }))); };
+$('#csv').onclick = () => {
+  const rows = [['Arc', 'Place', 'Groupe', 'Nom', 'Présent']];
+  state.arcs.forEach((a, i) => a.seats.forEach((s, k) => { const g = groupOf(a, s); rows.push([i + 1, k + 1, g ? g.name : '', s.name || (s.blocked ? '(bloquée)' : ''), s.name ? (isPresent(s.name) ? 'oui' : 'non') : '']); }));
+  const seated = new Set(); state.arcs.forEach(a => a.seats.forEach(s => { if (s.name) seated.add(key(s.name)); }));
+  Object.keys(state.present || {}).forEach(k => { if (!seated.has(k)) rows.push(['', '', '', state.present[k].name, 'oui (sans place)']); });
+  const csv = '\ufeff' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'plan_scene.csv'; a.click();
+};
+$('#rosterAdd').onclick = async () => {
+  const names = $('#rosterIn').value.split('\n').map(s => s.trim()).filter(Boolean); if (!names.length) return;
+  const r = await api('addRoster', { password: orgaPw, names });
+  if (r.ok) { roster = r.roster; $('#rosterIn').value = ''; renderRoster(); toast(names.length + ' nom(s) traités ✔'); } else toast(r.error, true);
+};
+$('#rosterQ').addEventListener('input', renderRoster);
+$('#rosterList').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-n]'); if (!b) return; const old = b.dataset.n;
+  if (b.dataset.a === 'ren') {
+    const nn = (prompt('Nouveau nom (Prénom Nom)', old) || '').trim(); if (!nn || nn === old) return;
+    let r = await api('removeRoster', { password: orgaPw, name: old }); if (!r.ok) return toast(r.error, true);
+    r = await api('addRoster', { password: orgaPw, names: [nn] }); if (!r.ok) return toast(r.error, true);
+    roster = r.roster; renderRoster();
+    return orgaEdit(st => { // le nouveau nom suit la place et la présence
+      st.arcs.forEach(a => a.seats.forEach(s => { if (s.name && key(s.name) === key(old)) s.name = nn; }));
+      st.present = st.present || {}; const k = key(old); if (st.present[k]) { st.present[key(nn)] = Object.assign({}, st.present[k], { name: nn }); delete st.present[k]; }
+    });
+  }
+  if (!confirm('Retirer ' + old + ' de la liste ?')) return;
+  const r = await api('removeRoster', { password: orgaPw, name: old });
+  if (r.ok) { roster = r.roster; renderRoster(); } else toast(r.error, true);
+});
+$('#sessOk').onclick = () => orgaEdit(st => { st.session = $('#sessLbl').value.trim(); });
+$('#presToggle').onclick = () => orgaEdit(st => { st.presenceOpen = !st.presenceOpen; });
+$('#presReset').onclick = () => { if (confirm('Vider toutes les présences pour une nouvelle séance ?')) orgaEdit(st => { st.present = {}; st.presenceOpen = true; }); };
+
+/* ================== ZOOM ================== */
+let lastW = 1000;
+function applyZoom(){ const el = $('#stageInner'); el.style.width = zoom + '%'; el.style.maxWidth = Math.round(lastW * 1.8 * zoom / 100) + 'px'; }
+function setZoom(z){ zoom = Math.max(60, Math.min(220, z)); $('#zoom').value = zoom; applyZoom(); positionPop(); }
+$('#zoom').oninput = e => setZoom(+e.target.value);
+$('#zm').onclick = () => setZoom(zoom - 15); $('#zp').onclick = () => setZoom(zoom + 15);
+$('#stageWrap').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); setZoom(zoom - e.deltaY * 0.15); } }, { passive: false });
+
+/* ================== DÉMARRAGE ================== */
+(async function init(){
+  if (!API_URL) $('#demoBanner').style.display = 'block';
+  const r = await api('get');
+  state = (r.ok && r.state) || defaultState();
+  if (PHOTOS_URL) { try { const j = await (await fetch(PHOTOS_URL)).json(); Object.keys(j).forEach(n => photos[key(n)] = j[n]); } catch (e) {} }
+  render();
+  if (orgaPw) { const c = await api('checkOrga', { password: orgaPw }); if (c.ok) await enterOrga(); else { orgaPw = null; ssSet('scene_pw', null); } }
+  if (!me && !isOrga()) openLogin();
+  if (!(r.ok && r.state) && isOrga()) toast('Plan non encore enregistré : clique « Enregistrer le plan »');
+  setInterval(async () => {
+    if (document.hidden) return; const a = document.activeElement;
+    if (a && (pop.contains(a) || $('#admin').contains(a))) return;
+    const x = await api('get'); if (x.ok && x.state && JSON.stringify(x.state) !== JSON.stringify(state)) { state = x.state; render(); if (isOrga()) renderAdmin(); }
+  }, 20000);
+})();
+</script>
+</body>
+</html>
