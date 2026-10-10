@@ -242,7 +242,7 @@ function logicPresent(st, d){
 if (!USE_CODE) document.querySelectorAll('.codeonly').forEach(e => e.style.display = 'none');
 /* ================== API (réelle ou démo) ================== */
 function demo(action, d){
-  const S = () => JSON.parse(lsGet('scene_demo_state_v3') || 'null');
+  const S = () => { const x = JSON.parse(lsGet('scene_demo_state_v3') || 'null'); if (x) ensureChef(x); return x; };
   const R = () => JSON.parse(lsGet('scene_demo_roster_v2') || '[]');
   const saveS = s => lsSet('scene_demo_state_v3', JSON.stringify(s));
   const saveR = r => lsSet('scene_demo_roster_v2', JSON.stringify(r));
@@ -296,10 +296,11 @@ const ICONS = {
   maracas: c => `<circle cx="-7" cy="-6" r="6.5" fill="${c}"/><path d="M-7 0 L-2 15" stroke="${c}" stroke-width="3" stroke-linecap="round"/><circle cx="7" cy="-6" r="6.5" fill="${c}"/><path d="M7 0 L2 15" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`,
   keys: c => `<rect x="-16" y="-8" width="32" height="18" rx="2" fill="none" stroke="${c}" stroke-width="2.4"/><path d="M-8 -8V10 M0 -8V10 M8 -8V10" stroke="${c}" stroke-width="1.6"/><rect x="-11" y="-8" width="6" height="10" fill="${c}"/><rect x="-3" y="-8" width="6" height="10" fill="${c}"/><rect x="5" y="-8" width="6" height="10" fill="${c}"/>`,
   mic: c => `<rect x="-5" y="-16" width="10" height="18" rx="5" fill="${c}"/><path d="M-10 -2 Q-10 10 0 10 Q10 10 10 -2" stroke="${c}" stroke-width="2.4" fill="none"/><path d="M0 10 L0 16 M-6 16 L6 16" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`,
+  baton: c => `<path d="M-12 14 L10 -12" stroke="${c}" stroke-width="3.4" stroke-linecap="round"/><circle cx="-12" cy="14" r="3.6" fill="${c}"/><path d="M-14 -10 Q-8 -16 -2 -10" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`,
   note: c => `<circle cx="-4" cy="10" r="5.5" fill="${c}"/><path d="M1.5 10 L1.5 -14 Q10 -10 9 -2" stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round"/>`
 };
-const ICON_NAMES = [['', 'Auto'], ['drum', 'Tambour ka'], ['kasolo', 'Ka solo (makè)'], ['konga', 'Konga'], ['woodblock', 'Ti bwa'], ['shaker', 'Siyak'], ['clave', 'Claves'], ['maracas', 'Chacha'], ['keys', 'Clavier'], ['mic', 'Micro'], ['note', 'Note']];
-const ICON_BY_ID = { boula: 'drum', make: 'kasolo', tibwa: 'woodblock', siyak: 'shaker', clave: 'clave', chacha: 'maracas', konga: 'konga', clavier: 'keys' };
+const ICON_NAMES = [['', 'Auto'], ['drum', 'Tambour ka'], ['kasolo', 'Ka solo (makè)'], ['konga', 'Konga'], ['woodblock', 'Ti bwa'], ['shaker', 'Siyak'], ['clave', 'Claves'], ['maracas', 'Chacha'], ['keys', 'Clavier'], ['mic', 'Micro'], ['note', 'Note'], ['baton', 'Baguette (chef)']];
+const ICON_BY_ID = { boula: 'drum', make: 'kasolo', tibwa: 'woodblock', siyak: 'shaker', clave: 'clave', chacha: 'maracas', konga: 'konga', clavier: 'keys', chef: 'baton' };
 const iconOf = g => (g && ICONS[g.icon] ? g.icon : (g && ICON_BY_ID[g.id]) || (g && g.kind === 'choeur' ? 'mic' : 'note'));
 // Silhouette (tête + épaules) avec l'instrument tenu devant la poitrine
 function silhouette(R, tc, bg, g){
@@ -327,17 +328,24 @@ function miniIcon(g, R){
 }
 
 /* ================== GÉOMÉTRIE & RENDU ================== */
+// Le chef est un participant : une place spéciale au centre de la scène
+function ensureChef(st){
+  if (!st || st.arcs.some(a => a.special === 'chef')) return false;
+  if (!st.groups.some(g => g.id === 'chef')) st.groups.push({ id: 'chef', name: 'Chef', sigle: 'CH', color: '#ffd23f', kind: 'chef', icon: 'baton' });
+  st.arcs.push({ id: 'chef', special: 'chef', groupId: 'chef', kind: 'chef', seats: [{ name: '', group: 'chef', fixed: true, blocked: false }] });
+  return true;
+}
 function geometry(){
-  const rMin = 160, n = state.arcs.length;
+  const rMin = 160, n = state.arcs.filter(a => !a.special).length;
   const step = n > 1 ? Math.min(80, (460 - rMin) / (n - 1)) : 0;
   const rMax = rMin + (n - 1) * step;
   const cy = rMax + 55, W = Math.max(380, 2 * (rMax + 50)), cx = W / 2;
   let seatR = 19;
-  const rs = state.arcs.map((arc, i) => rMin + i * step);
-  state.arcs.forEach((arc, i) => { const N = arc.seats.length; if (N > 1) seatR = Math.min(seatR, Math.PI * 0.92 * rs[i] / (N - 1) / 2 - 2); });
+  let ri = 0; const rs = state.arcs.map(arc => arc.special ? 0 : rMin + (ri++) * step);
+  state.arcs.forEach((arc, i) => { if (arc.special) return; const N = arc.seats.length; if (N > 1) seatR = Math.min(seatR, Math.PI * 0.92 * rs[i] / (N - 1) / 2 - 2); });
   if (n > 1) seatR = Math.min(seatR, step / 2 - 4);
   seatR = Math.max(7, seatR);
-  const arcs = state.arcs.map((arc, i) => ({ r: rs[i], pos: arc.seats.map((s, k) => {
+  const arcs = state.arcs.map((arc, i) => arc.special ? { r: 0, pos: [{ x: cx, y: cy - 30 }] } : ({ r: rs[i], pos: arc.seats.map((s, k) => {
     const N = arc.seats.length, t = N > 1 ? k / (N - 1) : 0.5, a = Math.PI * (1 - (0.04 + 0.92 * t));
     return { x: cx + rs[i] * Math.cos(a), y: cy - rs[i] * Math.sin(a) };
   }) }));
@@ -345,12 +353,13 @@ function geometry(){
 }
 function render(){
   if (!state) return;
+  ensureChef(state);
   $('#title').textContent = state.title || ''; $('#subtitle').textContent = state.subtitle || '';
   document.title = (state.title || 'Plan') + ' – ' + (state.subtitle || 'scène');
   const G = geometry(), R = G.seatR; let s = '<defs><clipPath id="seatclip"><circle r="20"/></clipPath></defs>';
-  s += `<path d="M${G.cx - 55} ${G.cy} a55 55 0 0 1 110 0 Z" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.4)"/><text x="${G.cx}" y="${G.cy - 14}" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">🎼 CHEF</text>`;
+  s += `<path d="M${G.cx - 55} ${G.cy} a55 55 0 0 1 110 0 Z" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.4)"/>`;
   s += `<rect x="${G.cx - 120}" y="${G.cy + 30}" width="240" height="28" rx="14" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.35)"/><text x="${G.cx}" y="${G.cy + 49}" text-anchor="middle" fill="#fff" font-size="14" font-weight="800" letter-spacing="4">PUBLIC</text>`;
-  state.arcs.forEach((arc, i) => { const r = G.arcs[i].r; s += `<path d="M${G.cx - r} ${G.cy} A${r} ${r} 0 0 1 ${G.cx + r} ${G.cy}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="${R * 2 + 6}"/>`; });
+  state.arcs.forEach((arc, i) => { if (arc.special) return; const r = G.arcs[i].r; s += `<path d="M${G.cx - r} ${G.cy} A${r} ${r} 0 0 1 ${G.cx + r} ${G.cy}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="${R * 2 + 6}"/>`; });
   state.arcs.forEach((arc, i) => {
     arc.seats.forEach((seat, k) => {
       const { x, y } = G.arcs[i].pos[k], g = groupOf(arc, seat), taken = !!seat.name;
@@ -361,12 +370,12 @@ function render(){
       const ph = taken ? photoOf(seat.name) : null, cid = `c${i}_${k}`;
       const inner = human(R, fill, blockedFree ? null : g, { photo: ph, init: taken && !ph ? initials(seat.name) : '', cid, lock: blockedFree });
       s += `<g class="seat${taken ? ' taken' : ''}${mine ? ' mine' : ''}${isSel ? ' sel' : ''}" data-seat="${arc.id}:${k}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><circle r="${R}" fill="transparent"/>${inner}<circle class="ring" r="${R + 1}"/>`;
-      if (taken && g && R >= 11) s += `<text y="${R + 11}" text-anchor="middle" fill="${g.color}" stroke="rgba(0,0,0,.45)" stroke-width="2.5" paint-order="stroke" font-size="${Math.max(8, Math.min(11, R * 0.5)).toFixed(1)}" font-weight="800">${esc(g.name)}</text>`;
+      if ((taken || arc.special) && g && R >= 11) s += `<text y="${R + 11}" text-anchor="middle" fill="${g.color}" stroke="rgba(0,0,0,.45)" stroke-width="2.5" paint-order="stroke" font-size="${Math.max(8, Math.min(11, R * 0.5)).toFixed(1)}" font-weight="800">${esc(g.name.replace(/\s*\(.*\)\s*$/, ''))}</text>`;
       if (taken && isPresent(seat.name)) s += `<g transform="translate(${R * 0.72},${-R * 0.72})"><circle r="${Math.max(5, R * 0.4)}" fill="#00c389" stroke="#fff" stroke-width="1.5"/><text y="${Math.max(5, R * 0.4) * 0.38}" text-anchor="middle" fill="#fff" font-size="${Math.max(7, R * 0.55)}" font-weight="900">✓</text></g>`;
       s += '</g>';
     });
     const p0 = G.arcs[i].pos[0];
-    if (p0) { const gname = arc.groupId ? (state.groups.find(g => g.id === arc.groupId) || {}).name : ''; s += `<text class="arclabel" x="${p0.x.toFixed(1)}" y="${(p0.y + R + 20).toFixed(1)}" text-anchor="middle">${i + 1}${gname ? '. ' + esc(gname.toUpperCase()) : ''}</text>`; }
+    if (p0 && !arc.special) { const gname = arc.groupId ? (state.groups.find(g => g.id === arc.groupId) || {}).name : ''; s += `<text class="arclabel" x="${p0.x.toFixed(1)}" y="${(p0.y + R + 20).toFixed(1)}" text-anchor="middle">${i + 1}${gname ? '. ' + esc(gname.toUpperCase()) : ''}</text>`; }
   });
   const svg = $('#stage'); svg.setAttribute('viewBox', `0 0 ${G.W} ${G.H}`); svg.innerHTML = s;
   lastW = G.W; applyZoom();
@@ -490,6 +499,7 @@ function result(r, okMsg){
 }
 async function orgaEdit(fn){
   const fresh = await api('get'); if (fresh.ok && fresh.state) state = fresh.state;
+  ensureChef(state);
   const copy = clone(state); fn(copy);
   const r = await api('save', { password: orgaPw, state: copy });
   if (r.ok) { state = r.state || copy; toast('Enregistré ✔'); render(); renderAdmin(); }
@@ -545,6 +555,7 @@ async function enterOrga(){
   const r = await api('roster', { password: orgaPw }); roster = (r.ok && r.roster) || [];
   renderAdmin(); render();
   if (!serverHasState) { serverHasState = true; await orgaEdit(() => {}); }
+  else { const f = await api('get'); if (f.ok && f.state && !f.state.arcs.some(a => a.special === 'chef')) await orgaEdit(() => {}); }
 }
 
 /* ================== ADMIN ================== */
@@ -553,7 +564,7 @@ function renderAdmin(){
   $('#tTitle').value = state.title || ''; $('#tSub').value = state.subtitle || '';
   $('#sessLbl').value = state.session || ''; $('#presToggle').textContent = state.presenceOpen ? '🔴 Fermer le pointage' : '🟢 Ouvrir le pointage';
   const kinds = [['', 'Tous'], ['musicien', 'Musiciens'], ['choeur', 'Chœur']];
-  $('#arcsEd').innerHTML = state.arcs.map((a, i) => `<div class="row" data-arc="${a.id}"><b>${i + 1}</b>
+  $('#arcsEd').innerHTML = state.arcs.filter(a => !a.special).map((a, i) => `<div class="row" data-arc="${a.id}"><b>${i + 1}</b>
     <input type="number" min="1" max="60" value="${a.seats.length}" data-f="n" title="Nombre de places">
     <select data-f="kind">${kinds.map(([v, l]) => `<option value="${v}"${a.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
     <select data-f="g"><option value="">Groupe au choix</option>${state.groups.map(g => `<option value="${esc(g.id)}"${a.groupId === g.id ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
