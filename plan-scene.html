@@ -140,11 +140,11 @@ details textarea{width:100%;min-height:70px}
 <div class="ov" id="loginOv">
   <div class="card">
     <h2>Connexion</h2>
-    <div class="small" style="color:#555">Entre ton prénom, ton nom et ton code pour réserver ta place.</div>
+    <div class="small" style="color:#555">Entre ton prénom et ton nom pour réserver ta place.<span class="codeonly"> Ajoute ton code.</span></div>
     <input id="lp" placeholder="Prénom" autocomplete="given-name">
     <input id="ln" placeholder="Nom" autocomplete="family-name">
-    <input id="lc" type="password" inputmode="numeric" maxlength="4" placeholder="Ton code à 4 chiffres" autocomplete="off">
-    <div class="small" style="color:#555">Ton code personnel t'a été donné par l'organisateur.</div>
+    <input id="lc" class="codeonly" type="password" inputmode="numeric" maxlength="4" placeholder="Ton code à 4 chiffres" autocomplete="off">
+    <div class="small codeonly" style="color:#555">Ton code personnel t'a été donné par l'organisateur.</div>
     <div class="err" id="lerr"></div>
     <button class="btn" style="width:100%" id="lgo">Entrer</button>
     <button class="btn alt" style="display:none" id="lskip">Juste regarder</button>
@@ -159,6 +159,7 @@ details textarea{width:100%;min-height:70px}
 
 <script>
 /* ================== CONFIG ================== */
+const USE_CODE = false;   // false = prénom + nom seulement (test) ; true = code personnel à 4 chiffres (doit correspondre à REQUIRE_CODE dans Code.gs)
 const API_URL = 'https://script.google.com/macros/s/AKfycbxfWBIB7xN2hnprTg2UG51bvCLm7DFCvtleVbXVEi2yTNyTENRjsF5YsnsZbqHgoaDlsw/exec';      // URL de l'application web Google Apps Script (vide = mode démo)
 const PHOTOS_URL = '';   // optionnel : photos.json  { "Prénom Nom": "https://..." }
 
@@ -238,6 +239,7 @@ function logicPresent(st, d){
   return { ok: true, state: st };
 }
 
+if (!USE_CODE) document.querySelectorAll('.codeonly').forEach(e => e.style.display = 'none');
 /* ================== API (réelle ou démo) ================== */
 function demo(action, d){
   const S = () => JSON.parse(lsGet('scene_demo_state_v3') || 'null');
@@ -563,7 +565,7 @@ function renderRoster(){
   roster = roster.map(e => typeof e === 'string' ? { name: e, code: '' } : e);
   const q = norm($('#rosterQ').value);
   $('#rosterList').innerHTML = (roster.length ? '<div class="small"><b>' + roster.length + ' participant(s)</b>' + (roster.some(e => !e.code) ? ' — certains n\'ont pas encore de code : clique sur « Générer les codes manquants »' : '') + '</div>' : '<div class="small">Liste vide : tout nom est accepté (sans code).</div>') +
-    roster.filter(e => !q || norm(e.name).includes(q)).map(e => `<div><span>${esc(e.name)} <b style="color:#5b1a8a;font-family:monospace">${e.code ? esc(e.code) : '— — — —'}</b></span><span><button data-n="${esc(e.name)}" data-a="code" title="Nouveau code">🔑</button><button data-n="${esc(e.name)}" data-a="ren">✎</button><button data-n="${esc(e.name)}" data-a="del">✕</button></span></div>`).join('');
+    roster.filter(e => !q || norm(e.name).includes(q)).map(e => `<div><span>${esc(e.name)} <b style="color:#ffd23f;font-family:monospace;letter-spacing:1px">${e.code ? esc(e.code) : '— — — —'}</b></span><span><button data-n="${esc(e.name)}" data-a="code" title="Nouveau code">🔑</button><button data-n="${esc(e.name)}" data-a="ren">✎</button><button data-n="${esc(e.name)}" data-a="del">✕</button></span></div>`).join('');
 }
 $('#arcsEd').addEventListener('change', e => {
   const row = e.target.closest('[data-arc]'); if (!row) return; const id = row.dataset.arc, f = e.target.dataset.f, v = e.target.value;
