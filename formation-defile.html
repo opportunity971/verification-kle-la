@@ -164,7 +164,7 @@
   .pos.blocked.blocked-empty:hover svg{ filter: none; }
 
   #free-layer{ position:absolute; left:-300px; top:0; width:calc(100% + 600px); height:100%; pointer-events:none; z-index:3; }
-  .pos.free{ position:absolute; width:66px; pointer-events:auto; }
+  .pos.free{ position:absolute; width:90px; pointer-events:auto; }
   .organizer-view .pos.free{ cursor:grab; touch-action:none; outline:1px dashed rgba(255,201,60,0.55); outline-offset:-4px; border-radius:50%; }
   .pos.removed{ visibility: hidden; }
   .organizer-view .pos.removed{ visibility: visible; cursor:pointer; }
@@ -1167,6 +1167,7 @@ function refreshCell(r,c){
 }
 
 function refreshAll(){
+  try{ setTimeout(layoutFree, 0); setTimeout(layoutFree, 400); }catch(_){}
   syncFreeDOM();
   for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) refreshCell(r,c);
   freeList.forEach(f => refreshCell(FREE_BASE + f.id, 1));
@@ -2283,11 +2284,41 @@ function buildFreeDOM(){
   freeList.forEach(f => {
     let el = layer.querySelector(`[data-free="${f.id}"]`);
     if(!el){ el = makeFreeEl(f); layer.appendChild(el); }
-    el.style.left = (f.x + FREE_PAD) + 'px';
-    el.style.top = f.y + 'px';
   });
+  layoutFree();
   freeSig = freeSignature();
 }
+
+// Les positions sont enregistrées pour une grille « large » de 560 px ; on les adapte à la taille réelle
+// de la grille (téléphone = plus étroite), et la silhouette libre a la même taille qu'une place de la grille.
+const FREE_REF_W = 560;
+function freeMetrics(){
+  const formation = document.getElementById('formation');
+  const k = (formation.offsetWidth || FREE_REF_W) / FREE_REF_W;
+  const cell = formation.querySelector('.pos:not(.free)');
+  const w = (cell && cell.offsetWidth) ? cell.offsetWidth : Math.round(98 * k);
+  return { k, w };
+}
+function freeMinX(scale){
+  const mainEl = document.querySelector('.main'), layer = document.getElementById('free-layer');
+  return (mainEl && layer) ? Math.max(0, (mainEl.getBoundingClientRect().left + 6 - layer.getBoundingClientRect().left) / scale) : 0;
+}
+function layoutFree(){
+  const layer = document.getElementById('free-layer');
+  if(!layer) return;
+  const { k, w } = freeMetrics();
+  const minX = freeMinX(zoomLevel / 100);
+  const mainEl = document.querySelector('.main'), lr = layer.getBoundingClientRect();
+  const maxX = mainEl ? Math.max(minX + w, (mainEl.getBoundingClientRect().right - 6 - lr.left) / (zoomLevel / 100)) : 99999;
+  freeList.forEach(f => {
+    const el = layer.querySelector(`[data-free="${f.id}"]`);
+    if(!el) return;
+    el.style.width = w + 'px';
+    el.style.left = Math.min(maxX - w, Math.max(minX, f.x * k + FREE_PAD)) + 'px';
+    el.style.top = (f.y * k) + 'px';
+  });
+}
+window.addEventListener('resize', layoutFree);
 
 // Reconstruit la couche seulement si la liste a changé (ajout, suppression, déplacement par un autre organisateur).
 function syncFreeDOM(){
@@ -2310,10 +2341,9 @@ document.addEventListener('pointermove', (e) => {
   if(!freeDrag.moved){ freeDrag.moved = true; hideSeatPopup(); }
   const formation = document.getElementById('formation');
   // à gauche, on ne peut pas aller au-delà du bord visible de la zone (sinon la silhouette passerait sous le panneau et serait perdue)
-  const mainEl = document.querySelector('.main'), layer = document.getElementById('free-layer');
-  const minX = (mainEl && layer) ? Math.max(0, (mainEl.getBoundingClientRect().left + 6 - layer.getBoundingClientRect().left) / freeDrag.scale) : 0;
-  const x = Math.max(minX, Math.min(formation.offsetWidth + 2 * FREE_PAD - 66, freeDrag.ox + dx / freeDrag.scale));
-  const y = Math.max(0, Math.min(formation.offsetHeight - 40, freeDrag.oy + dy / freeDrag.scale));
+  const minX = freeMinX(freeDrag.scale), fw = freeMetrics().w;
+  const x = Math.max(minX, Math.min(formation.offsetWidth + 2 * FREE_PAD - fw, freeDrag.ox + dx / freeDrag.scale));
+  const y = Math.max(0, Math.min(formation.offsetHeight - fw * 0.6, freeDrag.oy + dy / freeDrag.scale));
   freeDrag.el.style.left = x + 'px';
   freeDrag.el.style.top = y + 'px';
 });
@@ -2322,7 +2352,8 @@ async function endFreeDrag(){
   const d = freeDrag; freeDrag = null;
   if(!d.moved) return;
   freeDragMoved = true; setTimeout(() => { freeDragMoved = false; }, 350);
-  const x = Math.round(parseFloat(d.el.style.left)) - FREE_PAD, y = Math.round(parseFloat(d.el.style.top));
+  const kk = freeMetrics().k;
+  const x = Math.round((parseFloat(d.el.style.left) - FREE_PAD) / kk), y = Math.round(parseFloat(d.el.style.top) / kk);
   const f = freeList.find(v => v.id === d.id);
   if(f){ f.x = x; f.y = y; freeSig = freeSignature(); }
   try {
@@ -2336,11 +2367,12 @@ document.addEventListener('pointercancel', endFreeDrag);
 async function addFreeSilhouette(){
   const formation = document.getElementById('formation');
   const rect = formation.getBoundingClientRect(), scale = zoomLevel / 100;
-  let y = (window.innerHeight / 2 - rect.top) / scale - 33;
-  y = Math.max(0, Math.min(formation.offsetHeight - 70, y));
-  const x = formation.offsetWidth / 2 - 33 + (freeList.length % 5) * 24;
+  const m = freeMetrics();
+  let y = (window.innerHeight / 2 - rect.top) / scale - m.w / 2;
+  y = Math.max(0, Math.min(formation.offsetHeight - m.w, y));
+  const x = formation.offsetWidth / 2 - m.w / 2 + (freeList.length % 5) * 24;
   try {
-    const r = await apiPost({ action:'addFree', x: Math.round(x), y: Math.round(y), password: organizerPassword });
+    const r = await apiPost({ action:'addFree', x: Math.round(x / m.k), y: Math.round(y / m.k), password: organizerPassword });
     if(r.ok){
       await loadAllData();
       buildFreeDOM();
@@ -2378,6 +2410,7 @@ function applyZoom(){
   const el = document.getElementById('formation');
   const scale = zoomLevel / 100;
   el.style.transform = `scale(${scale})`;
+  try{ layoutFree(); }catch(_){}
   zoomSlider.value = zoomLevel;
   zoomValueLabel.textContent = Math.round(zoomLevel) + '%';
 }
