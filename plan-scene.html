@@ -96,22 +96,22 @@ details textarea{width:100%;min-height:70px}
     <div id="presInfo" style="margin:-6px 0 12px;font-weight:800"></div>
     <div id="legend"></div>
     <div id="admin" style="display:none">
-      <details open><summary>Titre</summary>
+      <details style="display:none"><summary>Titre</summary>
         <div class="row"><input type="text" id="tTitle" placeholder="Titre"></div>
         <div class="row"><input type="text" id="tSub" placeholder="Sous-titre"><button class="btn sm" id="tOk">OK</button></div>
       </details>
-      <details><summary>Pointage des présences</summary>
-        <div class="row"><input type="text" id="sessLbl" placeholder="Séance (ex. Répétition 10/10)"><button class="btn sm" id="sessOk">OK</button></div>
+      <details open><summary>Pointage des présences</summary>
+        <div class="row" style="display:none"><input type="text" id="sessLbl" placeholder="Séance (ex. Répétition 10/10)"><button class="btn sm" id="sessOk">OK</button></div>
         <div class="row"><button class="btn sm" id="presToggle">Ouvrir le pointage</button></div>
         <div class="row"><button class="btn sm pink" id="presReset">Nouvelle séance (vider les présences)</button></div>
         <div class="small">Les participants ne peuvent pointer que quand le pointage est ouvert : ouvre-le au début de la répétition et ferme-le ensuite.</div>
       </details>
-      <details><summary>Zones (arcs)</summary>
+      <details style="display:none"><summary>Zones (arcs)</summary>
         <div id="arcsEd"></div>
         <button class="btn sm" id="addArc">＋ Ajouter un arc</button>
         <div class="small" style="margin-top:6px">Type : limite les choix (musiciens / chœur). Groupe imposé : toutes les places de l'arc ont ce groupe.</div>
       </details>
-      <details><summary>Groupes (instruments, voix…)</summary>
+      <details style="display:none"><summary>Groupes (instruments, voix…)</summary>
         <div id="grpEd"></div>
         <button class="btn sm" id="addGrp">＋ Ajouter un groupe</button>
       </details>
@@ -122,10 +122,10 @@ details textarea{width:100%;min-height:70px}
         <div class="rl" id="rosterList"></div>
       </details>
       <details><summary>Outils</summary>
-        <div class="row"><button class="btn sm" id="saveInit">💾 Enregistrer le plan</button></div>
-        <div class="row"><button class="btn sm alt" id="csv">⬇️ Exporter (CSV)</button></div>
+        <div class="row" style="display:none"><button class="btn sm" id="saveInit">💾 Enregistrer le plan</button></div>
+        <div class="row" style="display:none"><button class="btn sm alt" id="csv">⬇️ Exporter (CSV)</button></div>
         <div class="row"><button class="btn sm pink" id="resetAll">Réinitialiser toutes les places</button></div>
-        <div class="row"><button class="btn sm pink" id="resetPlan">Remettre la disposition par défaut</button></div>
+        <div class="row" style="display:none"><button class="btn sm pink" id="resetPlan">Remettre la disposition par défaut</button></div>
       </details>
     </div>
   </aside>
@@ -263,7 +263,7 @@ async function api(action, data){
 }
 
 /* ================== ÉTAT GLOBAL ================== */
-let state = null, roster = [], photos = {}, me = ssGet('scene_me'), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
+let serverHasState = true, state = null, roster = [], photos = {}, me = ssGet('scene_me'), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
 const isOrga = () => !!orgaPw;
 const groupOf = (arc, seat) => state.groups.find(g => g.id === (arc.groupId || seat.group)) || null;
 const photoOf = name => photos[key(name)] || null;
@@ -388,7 +388,7 @@ function renderPop(){
   if (isOrga() && full) {
     h += `${chip}<div style="margin-top:6px">`;
     h += `<input id="pn" placeholder="Nom du participant" value="${esc(seat.name)}" autocomplete="off">`;
-    if (!arc.groupId) h += `<select id="pg"><option value="">— groupe libre —</option>${state.groups.map(x => `<option value="${esc(x.id)}"${x.id === seat.group ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select><label><input type="checkbox" id="pf"${seat.fixed ? ' checked' : ''}> Imposer ce groupe à la place</label>`;
+    if (!arc.groupId) h += `<select id="pg"><option value="">— au choix du participant —</option>${state.groups.map(x => `<option value="${esc(x.id)}"${x.id === seat.group ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
     h += `</div><button class="btn" data-act="osave">Enregistrer</button>`;
     h += `<button class="btn alt" style="color:#444;background:#eee" data-act="oblock">${seat.blocked ? '🔓 Débloquer' : '🔒 Bloquer'}</button>`;
     if (taken) h += `<button class="btn alt" style="color:#444;background:#eee" data-act="opres">${isPresent(seat.name) ? '❌ Marquer absent' : '✅ Marquer présent'}</button><button class="btn pink" data-act="oclear">Vider la place</button>`;
@@ -453,7 +453,7 @@ pop.addEventListener('click', async e => {
   if (act === 'present') return doPresent();
   if (act === 'release') return result(await api('release', { name: me, arcId: sel.arcId, index: sel.k }), 'Place libérée');
   const id = sel.arcId, k = sel.k;
-  if (act === 'osave') { const name = $('#pn').value.trim(), pg = $('#pg'), pf = $('#pf'); return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.name = name; if (pg) { s.group = pg.value; s.fixed = !!(pf && pf.checked && pg.value); } }); }
+  if (act === 'osave') { const name = $('#pn').value.trim(), pg = $('#pg'), pf = $('#pf'); return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.name = name; if (pg) { s.group = pg.value; s.fixed = !!pg.value; } }); }
   if (act === 'opres') { const nm = f.seat.name; return orgaEdit(st => { st.present = st.present || {}; const k = key(nm); if (st.present[k]) delete st.present[k]; else st.present[k] = { name: nm, at: new Date().toISOString() }; }); }
   if (act === 'oblock') return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.blocked = !s.blocked; });
   if (act === 'oclear') return orgaEdit(st => { const a = st.arcs.find(x => x.id === id), s = a.seats[k]; s.name = ''; if (!a.groupId && !s.fixed) s.group = ''; });
@@ -513,6 +513,7 @@ async function enterOrga(){
   $('#admin').style.display = 'block';
   const r = await api('roster', { password: orgaPw }); roster = (r.ok && r.roster) || [];
   renderAdmin(); render();
+  if (!serverHasState) { serverHasState = true; await orgaEdit(() => {}); }
 }
 
 /* ================== ADMIN ================== */
@@ -613,12 +614,12 @@ $('#stageWrap').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e
 (async function init(){
   if (!API_URL) $('#demoBanner').style.display = 'block';
   const r = await api('get');
+  serverHasState = !!(r.ok && r.state);
   state = (r.ok && r.state) || defaultState();
   if (PHOTOS_URL) { try { const j = await (await fetch(PHOTOS_URL)).json(); Object.keys(j).forEach(n => photos[key(n)] = j[n]); } catch (e) {} }
   render();
   if (orgaPw) { const c = await api('checkOrga', { password: orgaPw }); if (c.ok) await enterOrga(); else { orgaPw = null; ssSet('scene_pw', null); } }
   if (!me && !isOrga()) openLogin();
-  if (!(r.ok && r.state) && isOrga()) toast('Plan non encore enregistré : clique « Enregistrer le plan »');
   setInterval(async () => {
     if (document.hidden) return; const a = document.activeElement;
     if (a && (pop.contains(a) || $('#admin').contains(a))) return;
