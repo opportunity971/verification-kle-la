@@ -280,6 +280,7 @@ async function api(action, data){
 }
 
 /* ================== ÉTAT GLOBAL ================== */
+let moving = false, dragEnd = 0, drag = null;
 let serverHasState = true, state = null, roster = [], photos = {}, me = ssGet('scene_me'), myCode = ssGet('scene_code'), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
 const isOrga = () => !!orgaPw;
 const groupOf = (arc, seat) => state.groups.find(g => g.id === (arc.groupId || seat.group)) || null;
@@ -359,9 +360,9 @@ function render(){
   $('#title').textContent = state.title || ''; $('#subtitle').textContent = state.subtitle || '';
   document.title = (state.title || 'Plan') + ' – ' + (state.subtitle || 'scène');
   const G = geometry(), R = G.seatR; let s = '<defs><clipPath id="seatclip"><circle r="20"/></clipPath></defs>';
-  s += `<path d="M${G.cx - 55} ${G.cy} a55 55 0 0 1 110 0 Z" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.4)"/>`;
+  if (!moving && !state.free) s += `<path d="M${G.cx - 55} ${G.cy} a55 55 0 0 1 110 0 Z" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.4)"/>`;
   s += `<rect x="${G.cx - 120}" y="${G.cy + 30}" width="240" height="28" rx="14" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.35)"/><text x="${G.cx}" y="${G.cy + 49}" text-anchor="middle" fill="#fff" font-size="14" font-weight="800" letter-spacing="4">PUBLIC</text>`;
-  state.arcs.forEach((arc, i) => { if (arc.special) return; const r = G.arcs[i].r; s += `<path d="M${G.cx - r} ${G.cy} A${r} ${r} 0 0 1 ${G.cx + r} ${G.cy}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="${R * 2 + 6}"/>`; });
+  if (!moving && !state.free) state.arcs.forEach((arc, i) => { if (arc.special) return; const r = G.arcs[i].r; s += `<path d="M${G.cx - r} ${G.cy} A${r} ${r} 0 0 1 ${G.cx + r} ${G.cy}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="${R * 2 + 6}"/>`; });
   state.arcs.forEach((arc, i) => {
     arc.seats.forEach((seat, k) => {
       const { x, y } = G.arcs[i].pos[k], g = groupOf(arc, seat), taken = !!seat.name;
@@ -377,7 +378,7 @@ function render(){
       s += '</g>';
     });
     const p0 = G.arcs[i].pos[0];
-    if (p0 && !arc.special) { const gname = arc.groupId ? (state.groups.find(g => g.id === arc.groupId) || {}).name : ''; s += `<text class="arclabel" x="${p0.x.toFixed(1)}" y="${(p0.y + R + 20).toFixed(1)}" text-anchor="middle">${i + 1}${gname ? '. ' + esc(gname.toUpperCase()) : ''}</text>`; }
+    if (p0 && !arc.special && !moving && !state.free) { const gname = arc.groupId ? (state.groups.find(g => g.id === arc.groupId) || {}).name : ''; s += `<text class="arclabel" x="${p0.x.toFixed(1)}" y="${(p0.y + R + 20).toFixed(1)}" text-anchor="middle">${i + 1}${gname ? '. ' + esc(gname.toUpperCase()) : ''}</text>`; }
   });
   const svg = $('#stage'); svg.setAttribute('viewBox', `0 0 ${G.W} ${G.H}`); svg.innerHTML = s;
   lastW = G.W; applyZoom();
@@ -472,16 +473,16 @@ $('#stage').addEventListener('click', e => {
   sel = { arcId, k: +k }; full = false; render();
 });
 /* ---- déplacer les places (organisateur) ---- */
-let moving = false, dragEnd = 0, drag = null;
 function setMoving(v){
   moving = v && isOrga();
   const b = $('#moveMode'); b.textContent = moving ? '✅ Terminer le déplacement' : '↔️ Déplacer les places';
   $('#stage').style.touchAction = moving ? 'none' : 'manipulation'; $('#stage').style.cursor = moving ? 'grab' : '';
   $('#moveHint').style.display = moving ? 'block' : 'none';
-  if (moving) { sel = null; pop.style.display = 'none'; render(); }
+  if (moving) { sel = null; pop.style.display = 'none'; }
+  render();
 }
 $('#moveMode').onclick = () => setMoving(!moving);
-$('#resetPos').onclick = () => { if (confirm('Remettre toutes les places à leur position d\'origine (demi-cercle) ?')) orgaEdit(st => st.arcs.forEach(a => a.seats.forEach(x => { delete x.dx; delete x.dy; }))); };
+$('#resetPos').onclick = () => { if (confirm('Remettre toutes les places à leur position d\'origine (demi-cercle) ?')) orgaEdit(st => { delete st.free; st.arcs.forEach(a => a.seats.forEach(x => { delete x.dx; delete x.dy; })); }); };
 const svgPt = (svg, e) => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
 $('#stage').addEventListener('pointerdown', e => {
   if (!moving) return; const g = e.target.closest('.seat'); if (!g) return;
@@ -500,7 +501,7 @@ $('#stage').addEventListener('pointermove', e => {
 async function endDrag(){
   if (!drag) return; const d = drag; drag = null; d.g.style.opacity = ''; dragEnd = Date.now() + 300;
   const dx = Math.round(d.x - d.bx), dy = Math.round(d.y - d.by);
-  await orgaEdit(st => { const sx = st.arcs.find(a => a.id === d.arcId).seats[d.k]; if (dx || dy) { sx.dx = dx; sx.dy = dy; } else { delete sx.dx; delete sx.dy; } });
+  await orgaEdit(st => { st.free = true; const sx = st.arcs.find(a => a.id === d.arcId).seats[d.k]; if (dx || dy) { sx.dx = dx; sx.dy = dy; } else { delete sx.dx; delete sx.dy; } });
 }
 $('#stage').addEventListener('pointerup', endDrag);
 $('#stage').addEventListener('pointercancel', endDrag);
