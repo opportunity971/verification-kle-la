@@ -310,9 +310,9 @@ function silhouette(R, tc, bg, g){
 function human(R, fill, g, o){
   const tc = textColor(fill), ic = g ? ICONS[iconOf(g)] : null, hc = o.cid;
   const head = o.photo
-    ? `<clipPath id="${hc}"><circle cx="0" cy="-3" r="8.4"/></clipPath><circle cx="0" cy="-3" r="9.6" fill="${fill}"/><image href="${esc(o.photo)}" x="-8.4" y="-11.4" width="16.8" height="16.8" preserveAspectRatio="xMidYMid slice" clip-path="url(#${hc})"/>`
-    : `<circle cx="0" cy="-3" r="8" fill="#f3e9d8" stroke="rgba(0,0,0,.25)" stroke-width="1"/>` + (o.init ? `<text y="0" text-anchor="middle" fill="#3a2a4a" font-size="8" font-weight="900">${esc(o.init)}</text>` : '');
-  const chest = o.lock ? `<text y="16" text-anchor="middle" font-size="9">🔒</text>` : (ic ? `<g transform="translate(0,12.5) scale(.36)">${ic(tc)}</g>` : '');
+    ? `<clipPath id="${hc}"><circle cx="0" cy="-4" r="10.8"/></clipPath><circle cx="0" cy="-4" r="12" fill="${fill}"/><image href="${esc(o.photo)}" x="-10.8" y="-14.8" width="21.6" height="21.6" preserveAspectRatio="xMidYMid slice" clip-path="url(#${hc})"/>`
+    : `<circle cx="0" cy="-4" r="10.2" fill="#f3e9d8" stroke="rgba(0,0,0,.25)" stroke-width="1"/>` + (o.init ? `<text y="-1" text-anchor="middle" fill="#3a2a4a" font-size="10" font-weight="900">${esc(o.init)}</text>` : '');
+  const chest = o.lock ? `<text y="17" text-anchor="middle" font-size="8">🔒</text>` : (ic ? `<g transform="translate(0,14) scale(.32)">${ic(tc)}</g>` : '');
   return `<g transform="scale(${R / 20})"><path class="body" d="M-18 8 C-18 -2 -11 -7 0 -7 C11 -7 18 -2 18 8 C18 13 14 15 10 15.5 C8.5 18.5 4.5 20 0 20 C-4.5 20 -8.5 18.5 -10 15.5 C-14 15 -18 13 -18 8 Z" fill="${fill}" stroke="rgba(255,255,255,.75)" stroke-width="1.6"/>${chest}${head}</g>`;
 }
 function iconBadge(g, px){
