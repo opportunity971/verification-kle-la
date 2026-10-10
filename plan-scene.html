@@ -66,7 +66,7 @@ details textarea{width:100%;min-height:70px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:999px;z-index:120;display:none;font-weight:700}
 #toast.bad{background:#c62828}
 .small{font-size:12px;opacity:.8}
-.rl{max-height:180px;overflow:auto;font-size:13px}
+.rl{max-height:380px;overflow:auto;font-size:13px}
 .rl div{display:flex;justify-content:space-between;padding:2px 0}
 .rl button{background:none;border:0;color:#ff8a8a;cursor:pointer}
 </style>
@@ -116,8 +116,10 @@ details textarea{width:100%;min-height:70px}
         <button class="btn sm" id="addGrp">＋ Ajouter un groupe</button>
       </details>
       <details><summary>Liste des participants</summary>
-        <textarea id="rosterIn" placeholder="Un nom complet par ligne (Prénom Nom)"></textarea>
-        <button class="btn sm" id="rosterAdd">Ajouter à la liste</button>
+        <textarea id="rosterIn" placeholder="Un participant par ligne : Prénom Nom (le code est créé automatiquement) ou Prénom Nom;1234"></textarea>
+        <div class="row"><button class="btn sm" id="rosterAdd">Ajouter à la liste</button>
+        <button class="btn sm alt" id="rosterFill">🔑 Générer les codes manquants</button>
+        <button class="btn sm alt" id="rosterCopy">📋 Copier noms + codes</button></div>
         <div class="row"><input type="text" id="rosterQ" placeholder="Rechercher…"></div>
         <div class="rl" id="rosterList"></div>
       </details>
@@ -138,12 +140,20 @@ details textarea{width:100%;min-height:70px}
 <div class="ov" id="loginOv">
   <div class="card">
     <h2>Connexion</h2>
-    <div class="small" style="color:#555">Entre ton prénom et ton nom pour réserver ta place.</div>
+    <div class="small" style="color:#555">Entre ton prénom, ton nom et ton code pour réserver ta place.</div>
     <input id="lp" placeholder="Prénom" autocomplete="given-name">
     <input id="ln" placeholder="Nom" autocomplete="family-name">
+    <input id="lc" type="password" inputmode="numeric" maxlength="4" placeholder="Ton code à 4 chiffres" autocomplete="off">
+    <div class="small" style="color:#555">Ton code personnel t'a été donné par l'organisateur.</div>
     <div class="err" id="lerr"></div>
     <button class="btn" style="width:100%" id="lgo">Entrer</button>
-    <button class="btn alt" style="width:100%;margin-top:6px;color:#555;background:#eee" id="lskip">Juste regarder</button>
+    <button class="btn alt" style="display:none" id="lskip">Juste regarder</button>
+    <a href="#" id="toOrga" style="display:block;text-align:center;margin-top:14px;color:#5b1a8a;font-weight:700;text-decoration:none">🔑 Accès organisateur</a>
+    <div id="orgaBox" style="display:none;margin-top:6px">
+      <input id="opw" type="password" placeholder="Mot de passe organisateur" autocomplete="current-password">
+      <div class="err" id="oerr"></div>
+      <button class="btn pink" style="width:100%" id="ogo">Entrer en organisateur</button>
+    </div>
   </div>
 </div>
 
@@ -231,25 +241,28 @@ function logicPresent(st, d){
 /* ================== API (réelle ou démo) ================== */
 function demo(action, d){
   const S = () => JSON.parse(lsGet('scene_demo_state_v3') || 'null');
-  const R = () => JSON.parse(lsGet('scene_demo_roster') || '[]');
+  const R = () => JSON.parse(lsGet('scene_demo_roster_v2') || '[]');
   const saveS = s => lsSet('scene_demo_state_v3', JSON.stringify(s));
-  const saveR = r => lsSet('scene_demo_roster', JSON.stringify(r));
+  const saveR = r => lsSet('scene_demo_roster_v2', JSON.stringify(r));
+  const newCode = r => { const t = new Set(r.map(e => e.code)); let c; do { c = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); } while (t.has(c)); return c; };
+  const fix = v => { v = String(v == null ? '' : v).replace(/\D/g, ''); return v && v.length <= 4 ? v.padStart(4, '0') : ''; };
+  const auth = () => { const r = R(); if (!r.length) { const n = String(d.name || '').trim(); return n ? { name: n } : { error: 'Nom manquant.' }; }
+    const e = r.find(x => key(x.name) === key(d.name)); if (!e) return { error: 'Nom non reconnu dans la liste des participants.' };
+    if (fix(d.code) !== e.code) return { error: 'Code incorrect.' }; return { name: e.name }; };
   const needPw = () => d.password === 'demo';
   switch (action) {
     case 'get': { let st = S(); if (!st) { st = defaultState(); saveS(st); } return { ok: true, state: st }; }
-    case 'checkAccess': {
-      const r = R(); const c = r.find(n => key(n) === key(d.name));
-      if (!r.length) return { ok: true, allowed: !!String(d.name).trim(), name: String(d.name).trim() };
-      return { ok: true, allowed: !!c, name: c || d.name };
-    }
+    case 'checkAccess': { const a = auth(); return a.error ? { ok: true, allowed: false, error: a.error } : { ok: true, allowed: true, name: a.name }; }
     case 'checkOrga': return { ok: needPw() };
-    case 'reserve': { const st = S(); const r = logicReserve(st, d); if (r.ok) saveS(st); return r; }
-    case 'release': { const st = S(); const r = logicRelease(st, d); if (r.ok) saveS(st); return r; }
-    case 'present': { const st = S(); const r = logicPresent(st, d); if (r.ok) saveS(st); return r; }
+    case 'reserve': { const a = auth(); if (a.error) return { ok: false, error: a.error }; const st = S(); const r = logicReserve(st, Object.assign({}, d, { name: a.name })); if (r.ok) saveS(st); return r; }
+    case 'release': { const a = auth(); if (a.error) return { ok: false, error: a.error }; const st = S(); const r = logicRelease(st, Object.assign({}, d, { name: a.name })); if (r.ok) saveS(st); return r; }
+    case 'present': { const a = auth(); if (a.error) return { ok: false, error: a.error }; const st = S(); const r = logicPresent(st, Object.assign({}, d, { name: a.name })); if (r.ok) saveS(st); return r; }
     case 'save': if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; saveS(d.state); return { ok: true, state: d.state };
     case 'roster': return needPw() ? { ok: true, roster: R() } : { ok: false, error: 'Mot de passe incorrect.' };
-    case 'addRoster': { const r = R(); const have = new Set(r.map(key)); (d.names || []).forEach(n => { n = n.trim(); if (n && !have.has(key(n))) { have.add(key(n)); r.push(n); } }); saveR(r); return { ok: true, roster: r }; }
-    case 'removeRoster': { const r = R(); const i = r.findIndex(n => key(n) === key(d.name)); if (i >= 0) r.splice(i, 1); saveR(r); return { ok: true, roster: r }; }
+    case 'addRoster': { if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; const r = R(); const have = new Set(r.map(e => key(e.name))); (d.items || []).forEach(it => { const n = String(typeof it === 'string' ? it : it.name || '').trim(); if (!n || have.has(key(n))) return; have.add(key(n)); let c = fix(typeof it === 'string' ? '' : it.code); if (!c || r.some(e => e.code === c)) c = newCode(r); r.push({ name: n, code: c }); }); saveR(r); return { ok: true, roster: r }; }
+    case 'removeRoster': { if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; const r = R(); const i = r.findIndex(e => key(e.name) === key(d.name)); if (i >= 0) r.splice(i, 1); saveR(r); return { ok: true, roster: r }; }
+    case 'fillCodes': { if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; const r = R(); r.forEach(e => { if (!e.code) e.code = newCode(r); }); saveR(r); return { ok: true, roster: r }; }
+    case 'newCode': { if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; const r = R(); const e = r.find(x => key(x.name) === key(d.name)); if (e) { e.code = ''; e.code = newCode(r); } saveR(r); return { ok: true, roster: r }; }
   }
   return { ok: false, error: 'Action inconnue.' };
 }
@@ -263,7 +276,7 @@ async function api(action, data){
 }
 
 /* ================== ÉTAT GLOBAL ================== */
-let serverHasState = true, state = null, roster = [], photos = {}, me = ssGet('scene_me'), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
+let serverHasState = true, state = null, roster = [], photos = {}, me = ssGet('scene_me'), myCode = ssGet('scene_code'), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
 const isOrga = () => !!orgaPw;
 const groupOf = (arc, seat) => state.groups.find(g => g.id === (arc.groupId || seat.group)) || null;
 const photoOf = name => photos[key(name)] || null;
@@ -369,7 +382,8 @@ function renderLegend(){
   $('#legend').innerHTML = state.groups.map(g => `<div class="leg">${iconBadge(g, 24)}${esc(g.name)} <span class="small">${esc(g.sigle)}</span><span class="n">${counts[g.id] || 0}</span></div>`).join('');
   $('#who').textContent = me ? 'Connecté : ' + me : (isOrga() ? '' : 'Non connecté');
   $('#btnLogin').textContent = me ? '👤 ' + me : '👤 Je me connecte';
-  $('#btnOrga').textContent = isOrga() ? '🔓 Organisateur (quitter)' : '🔑 Organisateur';
+  $('#btnOrga').style.display = isOrga() ? '' : 'none';
+  $('#btnOrga').textContent = '🔓 Quitter le mode organisateur';
 }
 
 /* ================== BULLE ================== */
@@ -448,10 +462,10 @@ pop.addEventListener('click', async e => {
   if (act === 'reserve') {
     const pg = $('#pg'), grp = pg ? pg.value : '';
     if (pg && !grp) return toast('Choisis ton instrument ou ta voix', true);
-    return result(await api('reserve', { name: me, arcId: sel.arcId, index: sel.k, group: grp }), 'Place réservée ✔');
+    return result(await api('reserve', { name: me, code: myCode, arcId: sel.arcId, index: sel.k, group: grp }), 'Place réservée ✔');
   }
   if (act === 'present') return doPresent();
-  if (act === 'release') return result(await api('release', { name: me, arcId: sel.arcId, index: sel.k }), 'Place libérée');
+  if (act === 'release') return result(await api('release', { name: me, code: myCode, arcId: sel.arcId, index: sel.k }), 'Place libérée');
   const id = sel.arcId, k = sel.k;
   if (act === 'osave') { const name = $('#pn').value.trim(), pg = $('#pg'), pf = $('#pf'); return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.name = name; if (pg) { s.group = pg.value; s.fixed = !!pg.value; } }); }
   if (act === 'opres') { const nm = f.seat.name; return orgaEdit(st => { st.present = st.present || {}; const k = key(nm); if (st.present[k]) delete st.present[k]; else st.present[k] = { name: nm, at: new Date().toISOString() }; }); }
@@ -461,7 +475,7 @@ pop.addEventListener('click', async e => {
 async function doPresent(){
   if (!me) return openLogin();
   if (isPresent(me)) return toast('Ta présence est déjà enregistrée ✔');
-  result(await api('present', { name: me }), 'Présence enregistrée ✔');
+  result(await api('present', { name: me, code: myCode }), 'Présence enregistrée ✔');
 }
 $('#btnPresent').onclick = doPresent;
 function result(r, okMsg){
@@ -482,7 +496,7 @@ function attachAC(inp){
   if (inp._ac) return; inp._ac = 1;
   inp.addEventListener('input', () => {
     const q = norm(inp.value); if (!q) { ac.style.display = 'none'; return; }
-    const m = roster.filter(n => norm(n).includes(q)).slice(0, 8);
+    const m = roster.map(e => e.name).filter(n => norm(n).includes(q)).slice(0, 8);
     if (!m.length) { ac.style.display = 'none'; return; }
     ac.innerHTML = m.map(n => `<div data-n="${esc(n)}">${esc(n)}</div>`).join('');
     const r = inp.getBoundingClientRect(); ac.style.left = r.left + 'px'; ac.style.top = (r.bottom + 2) + 'px'; ac.style.width = r.width + 'px'; ac.style.display = 'block'; ac._inp = inp;
@@ -492,18 +506,29 @@ function attachAC(inp){
 ac.addEventListener('pointerdown', e => { const d = e.target.closest('[data-n]'); if (d && ac._inp) { e.preventDefault(); ac._inp.value = d.dataset.n; ac.style.display = 'none'; } });
 
 /* ================== CONNEXIONS ================== */
-function openLogin(){ $('#lerr').textContent = ''; $('#loginOv').style.display = 'flex'; }
-$('#btnLogin').onclick = () => { if (me) { if (confirm('Te déconnecter ?')) { me = null; ssSet('scene_me', null); render(); } } else openLogin(); };
+function openLogin(){ $('#lc').value = ''; $('#lerr').textContent = ''; $('#oerr').textContent = ''; $('#opw').value = ''; $('#orgaBox').style.display = 'none'; $('#loginOv').style.display = 'flex'; }
+$('#toOrga').onclick = e => { e.preventDefault(); const b = $('#orgaBox'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; if (b.style.display === 'block') $('#opw').focus(); };
+async function orgaLogin(){
+  const pw = $('#opw').value; if (!pw) { $('#oerr').textContent = 'Entre le mot de passe.'; return; }
+  const r = await api('checkOrga', { password: pw });
+  if (r.ok) { orgaPw = pw; ssSet('scene_pw', pw); $('#loginOv').style.display = 'none'; await enterOrga(); toast('Mode organisateur'); }
+  else $('#oerr').textContent = 'Mot de passe incorrect.';
+}
+$('#ogo').onclick = orgaLogin;
+$('#opw').addEventListener('keydown', e => { if (e.key === 'Enter') orgaLogin(); });
+$('#lc').addEventListener('keydown', e => { if (e.key === 'Enter') $('#lgo').click(); });
+$('#btnLogin').onclick = () => { if (me) { if (confirm('Te déconnecter ?')) { me = null; myCode = null; ssSet('scene_me', null); ssSet('scene_code', null); render(); } } else openLogin(); };
 $('#lskip').onclick = () => $('#loginOv').style.display = 'none';
 $('#lgo').onclick = async () => {
   const name = ($('#lp').value.trim() + ' ' + $('#ln').value.trim()).trim();
+  const code = $('#lc').value.trim();
   if (!$('#lp').value.trim() || !$('#ln').value.trim()) { $('#lerr').textContent = 'Prénom et nom, s\'il te plaît.'; return; }
-  const r = await api('checkAccess', { name });
-  if (r.ok && r.allowed) { me = r.name || name; ssSet('scene_me', me); $('#loginOv').style.display = 'none'; render(); toast('Bienvenue ' + me); }
-  else $('#lerr').textContent = r.error || 'Nom non reconnu. Vérifie l\'orthographe ou préviens un organisateur.';
+  const r = await api('checkAccess', { name, code });
+  if (r.ok && r.allowed) { me = r.name || name; myCode = code; ssSet('scene_me', me); ssSet('scene_code', code); $('#lc').value = ''; $('#loginOv').style.display = 'none'; render(); toast('Bienvenue ' + me); }
+  else $('#lerr').textContent = r.error || 'Nom ou code incorrect. Vérifie, ou préviens un organisateur.';
 };
 $('#btnOrga').onclick = async () => {
-  if (isOrga()) { orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; render(); return; }
+  if (isOrga()) { orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; sel = null; pop.style.display = 'none'; render(); if (!me) openLogin(); return; }
   const pw = prompt('Mot de passe organisateur'); if (!pw) return;
   const r = await api('checkOrga', { password: pw });
   if (r.ok) { orgaPw = pw; ssSet('scene_pw', pw); await enterOrga(); toast('Mode organisateur'); }
@@ -535,9 +560,10 @@ function renderAdmin(){
   renderRoster();
 }
 function renderRoster(){
+  roster = roster.map(e => typeof e === 'string' ? { name: e, code: '' } : e);
   const q = norm($('#rosterQ').value);
-  $('#rosterList').innerHTML = (roster.length ? '' : '<div class="small">Liste vide : tout nom est accepté.</div>') +
-    roster.filter(n => !q || norm(n).includes(q)).map(n => `<div><span>${esc(n)}</span><span><button data-n="${esc(n)}" data-a="ren">✎</button><button data-n="${esc(n)}" data-a="del">✕</button></span></div>`).join('');
+  $('#rosterList').innerHTML = (roster.length ? '<div class="small"><b>' + roster.length + ' participant(s)</b>' + (roster.some(e => !e.code) ? ' — certains n\'ont pas encore de code : clique sur « Générer les codes manquants »' : '') + '</div>' : '<div class="small">Liste vide : tout nom est accepté (sans code).</div>') +
+    roster.filter(e => !q || norm(e.name).includes(q)).map(e => `<div><span>${esc(e.name)} <b style="color:#5b1a8a;font-family:monospace">${e.code ? esc(e.code) : '— — — —'}</b></span><span><button data-n="${esc(e.name)}" data-a="code" title="Nouveau code">🔑</button><button data-n="${esc(e.name)}" data-a="ren">✎</button><button data-n="${esc(e.name)}" data-a="del">✕</button></span></div>`).join('');
 }
 $('#arcsEd').addEventListener('change', e => {
   const row = e.target.closest('[data-arc]'); if (!row) return; const id = row.dataset.arc, f = e.target.dataset.f, v = e.target.value;
@@ -577,17 +603,27 @@ $('#csv').onclick = () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'plan_scene.csv'; a.click();
 };
 $('#rosterAdd').onclick = async () => {
-  const names = $('#rosterIn').value.split('\n').map(s => s.trim()).filter(Boolean); if (!names.length) return;
-  const r = await api('addRoster', { password: orgaPw, names });
-  if (r.ok) { roster = r.roster; $('#rosterIn').value = ''; renderRoster(); toast(names.length + ' nom(s) traités ✔'); } else toast(r.error, true);
+  const items = $('#rosterIn').value.split('\n').map(s => s.trim()).filter(Boolean).map(l => { const p = l.split(/[;\t]/); return { name: p[0].trim(), code: (p[1] || '').trim() }; }).filter(x => x.name); if (!items.length) return;
+  const r = await api('addRoster', { password: orgaPw, items });
+  if (r.ok) { roster = r.roster; $('#rosterIn').value = ''; renderRoster(); toast(items.length + ' nom(s) traités ✔'); } else toast(r.error, true);
+};
+$('#rosterFill').onclick = async () => { const r = await api('fillCodes', { password: orgaPw }); if (r.ok) { roster = r.roster; renderRoster(); toast('Codes générés ✔'); } else toast(r.error, true); };
+$('#rosterCopy').onclick = async () => {
+  const t = roster.map(e => e.name + ';' + e.code).join('\n');
+  try { await navigator.clipboard.writeText(t); toast('Liste copiée ✔'); } catch (e) { const ta = $('#rosterIn'); ta.value = t; ta.select(); toast('Copie la liste affichée dans la zone de texte'); }
 };
 $('#rosterQ').addEventListener('input', renderRoster);
 $('#rosterList').addEventListener('click', async e => {
   const b = e.target.closest('button[data-n]'); if (!b) return; const old = b.dataset.n;
+  if (b.dataset.a === 'code') {
+    if (!confirm('Créer un nouveau code pour ' + old + ' ? L\'ancien ne marchera plus.')) return;
+    const r = await api('newCode', { password: orgaPw, name: old }); if (r.ok) { roster = r.roster; renderRoster(); toast('Nouveau code ✔'); } else toast(r.error, true); return;
+  }
   if (b.dataset.a === 'ren') {
     const nn = (prompt('Nouveau nom (Prénom Nom)', old) || '').trim(); if (!nn || nn === old) return;
     let r = await api('removeRoster', { password: orgaPw, name: old }); if (!r.ok) return toast(r.error, true);
-    r = await api('addRoster', { password: orgaPw, names: [nn] }); if (!r.ok) return toast(r.error, true);
+    const oldE = roster.find(e => e.name === old);
+    r = await api('addRoster', { password: orgaPw, items: [{ name: nn, code: oldE ? oldE.code : '' }] }); if (!r.ok) return toast(r.error, true);
     roster = r.roster; renderRoster();
     return orgaEdit(st => { // le nouveau nom suit la place et la présence
       st.arcs.forEach(a => a.seats.forEach(s => { if (s.name && key(s.name) === key(old)) s.name = nn; }));
