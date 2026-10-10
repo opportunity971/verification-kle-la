@@ -89,7 +89,7 @@ details textarea{width:100%;min-height:70px}
   <span id="who" class="small"></span>
 </div>
 <div id="layout">
-  <div id="stageWrap"><div id="stageInner"><svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg></div></div>
+  <div id="stageWrap"><div id="moveHint" style="display:none;background:#ffd23f;color:#3a2a4a;font-weight:800;text-align:center;padding:8px;border-radius:12px;margin-bottom:6px;position:sticky;left:0">↔️ Mode déplacement : fais glisser une silhouette où tu veux. Clique « Terminer le déplacement » (panneau organisateur) quand tu as fini.</div><div id="stageInner"><svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg></div></div>
   <aside class="side">
     <h3>Places réservées</h3>
     <div class="total" id="total"></div>
@@ -126,6 +126,8 @@ details textarea{width:100%;min-height:70px}
       <details><summary>Outils</summary>
         <div class="row" style="display:none"><button class="btn sm" id="saveInit">💾 Enregistrer le plan</button></div>
         <div class="row" style="display:none"><button class="btn sm alt" id="csv">⬇️ Exporter (CSV)</button></div>
+        <div class="row"><button class="btn sm alt" id="moveMode">↔️ Déplacer les places</button></div>
+        <div class="row"><button class="btn sm alt" id="resetPos">Remettre en demi-cercle</button></div>
         <div class="row"><button class="btn sm pink" id="resetAll">Réinitialiser toutes les places</button></div>
         <div class="row" style="display:none"><button class="btn sm pink" id="resetPlan">Remettre la disposition par défaut</button></div>
       </details>
@@ -345,9 +347,9 @@ function geometry(){
   state.arcs.forEach((arc, i) => { if (arc.special) return; const N = arc.seats.length; if (N > 1) seatR = Math.min(seatR, Math.PI * 0.92 * rs[i] / (N - 1) / 2 - 2); });
   if (n > 1) seatR = Math.min(seatR, step / 2 - 4);
   seatR = Math.max(7, seatR);
-  const arcs = state.arcs.map((arc, i) => arc.special ? { r: 0, pos: [{ x: cx, y: cy - 30 }] } : ({ r: rs[i], pos: arc.seats.map((s, k) => {
+  const arcs = state.arcs.map((arc, i) => arc.special ? { r: 0, pos: [{ x: cx + (arc.seats[0].dx || 0), y: cy - 30 + (arc.seats[0].dy || 0) }] } : ({ r: rs[i], pos: arc.seats.map((s, k) => {
     const N = arc.seats.length, t = N > 1 ? k / (N - 1) : 0.5, a = Math.PI * (1 - (0.04 + 0.92 * t));
-    return { x: cx + rs[i] * Math.cos(a), y: cy - rs[i] * Math.sin(a) };
+    return { x: cx + rs[i] * Math.cos(a) + (s.dx || 0), y: cy - rs[i] * Math.sin(a) + (s.dy || 0) };
   }) }));
   return { cx, cy, seatR, arcs, W, H: cy + 78 };
 }
@@ -463,11 +465,45 @@ document.addEventListener('pointerdown', e => {
   closePop();
 }, true);
 $('#stage').addEventListener('click', e => {
+  if (moving || Date.now() < dragEnd) return;
   const g = e.target.closest('.seat'); if (!g) return;
   const [arcId, k] = g.dataset.seat.split(':');
   if (sel && sel.arcId === arcId && sel.k === +k) { closePop(); return; }
   sel = { arcId, k: +k }; full = false; render();
 });
+/* ---- déplacer les places (organisateur) ---- */
+let moving = false, dragEnd = 0, drag = null;
+function setMoving(v){
+  moving = v && isOrga();
+  const b = $('#moveMode'); b.textContent = moving ? '✅ Terminer le déplacement' : '↔️ Déplacer les places';
+  $('#stage').style.touchAction = moving ? 'none' : 'manipulation'; $('#stage').style.cursor = moving ? 'grab' : '';
+  $('#moveHint').style.display = moving ? 'block' : 'none';
+  if (moving) { sel = null; pop.style.display = 'none'; render(); }
+}
+$('#moveMode').onclick = () => setMoving(!moving);
+$('#resetPos').onclick = () => { if (confirm('Remettre toutes les places à leur position d\'origine (demi-cercle) ?')) orgaEdit(st => st.arcs.forEach(a => a.seats.forEach(x => { delete x.dx; delete x.dy; }))); };
+const svgPt = (svg, e) => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
+$('#stage').addEventListener('pointerdown', e => {
+  if (!moving) return; const g = e.target.closest('.seat'); if (!g) return;
+  e.preventDefault();
+  const svg = $('#stage'), m = /translate\(([-\d.]+),([-\d.]+)\)/.exec(g.getAttribute('transform')), p = svgPt(svg, e);
+  const [arcId, k] = g.dataset.seat.split(':'); const arc = state.arcs.find(a => a.id === arcId), seat = arc.seats[+k];
+  drag = { g, svg, arcId, k: +k, ox: +m[1] - p.x, oy: +m[2] - p.y, x: +m[1], y: +m[2], bx: +m[1] - (seat.dx || 0), by: +m[2] - (seat.dy || 0) };
+  try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+  g.style.opacity = .85;
+});
+$('#stage').addEventListener('pointermove', e => {
+  if (!drag) return; const p = svgPt(drag.svg, e), vb = drag.svg.viewBox.baseVal;
+  drag.x = Math.max(12, Math.min(vb.width - 12, p.x + drag.ox)); drag.y = Math.max(12, Math.min(vb.height - 12, p.y + drag.oy));
+  drag.g.setAttribute('transform', `translate(${drag.x.toFixed(1)},${drag.y.toFixed(1)})`);
+});
+async function endDrag(){
+  if (!drag) return; const d = drag; drag = null; d.g.style.opacity = ''; dragEnd = Date.now() + 300;
+  const dx = Math.round(d.x - d.bx), dy = Math.round(d.y - d.by);
+  await orgaEdit(st => { const sx = st.arcs.find(a => a.id === d.arcId).seats[d.k]; if (dx || dy) { sx.dx = dx; sx.dy = dy; } else { delete sx.dx; delete sx.dy; } });
+}
+$('#stage').addEventListener('pointerup', endDrag);
+$('#stage').addEventListener('pointercancel', endDrag);
 pop.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b || !sel) return;
   const act = b.dataset.act, f = findSeat(); if (!f) return;
@@ -544,7 +580,7 @@ $('#lgo').onclick = async () => {
   else $('#lerr').textContent = r.error || 'Nom ou code incorrect. Vérifie, ou préviens un organisateur.';
 };
 $('#btnOrga').onclick = async () => {
-  if (isOrga()) { orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; sel = null; pop.style.display = 'none'; render(); if (!me) openLogin(); return; }
+  if (isOrga()) { if (moving) setMoving(false); orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; sel = null; pop.style.display = 'none'; render(); if (!me) openLogin(); return; }
   const pw = (prompt('Mot de passe organisateur') || '').trim(); if (!pw) return;
   const r = await api('checkOrga', { password: pw });
   if (r.ok) { orgaPw = pw; ssSet('scene_pw', pw); await enterOrga(); toast('Mode organisateur'); }
