@@ -2299,17 +2299,19 @@ function freeMetrics(){
   const w = (cell && cell.offsetWidth) ? cell.offsetWidth : Math.round(98 * k);
   return { k, w };
 }
-function freeMinX(scale){
-  const mainEl = document.querySelector('.main'), layer = document.getElementById('free-layer');
-  return (mainEl && layer) ? Math.max(0, (mainEl.getBoundingClientRect().left + 6 - layer.getBoundingClientRect().left) / scale) : 0;
+// Limites (en pixels non zoomés, donc identiques quel que soit le zoom) de ce qui est visible dans la zone centrale.
+function freeBounds(){
+  const mainEl = document.querySelector('.main'), formation = document.getElementById('formation');
+  if(!mainEl) return { min: 0, max: 99999 };
+  // position de la grille dans la zone centrale, SANS tenir compte du zoom ni du défilement (sinon la silhouette bougerait)
+  const leftContent = Math.max(0, (mainEl.clientWidth - formation.offsetWidth) / 2);
+  return { min: Math.max(0, FREE_PAD + 22 - leftContent), max: FREE_PAD + mainEl.clientWidth - 6 - leftContent };
 }
 function layoutFree(){
   const layer = document.getElementById('free-layer');
   if(!layer) return;
   const { k, w } = freeMetrics();
-  const minX = freeMinX(zoomLevel / 100);
-  const mainEl = document.querySelector('.main'), lr = layer.getBoundingClientRect();
-  const maxX = mainEl ? Math.max(minX + w, (mainEl.getBoundingClientRect().right - 6 - lr.left) / (zoomLevel / 100)) : 99999;
+  const bd = freeBounds(), minX = bd.min, maxX = Math.max(bd.min + w, bd.max);
   freeList.forEach(f => {
     const el = layer.querySelector(`[data-free="${f.id}"]`);
     if(!el) return;
@@ -2341,8 +2343,8 @@ document.addEventListener('pointermove', (e) => {
   if(!freeDrag.moved){ freeDrag.moved = true; hideSeatPopup(); }
   const formation = document.getElementById('formation');
   // à gauche, on ne peut pas aller au-delà du bord visible de la zone (sinon la silhouette passerait sous le panneau et serait perdue)
-  const minX = freeMinX(freeDrag.scale), fw = freeMetrics().w;
-  const x = Math.max(minX, Math.min(formation.offsetWidth + 2 * FREE_PAD - fw, freeDrag.ox + dx / freeDrag.scale));
+  const bd = freeBounds(), fw = freeMetrics().w;
+  const x = Math.max(bd.min, Math.min(formation.offsetWidth + 2 * FREE_PAD - fw, Math.max(bd.min + fw, bd.max) - fw, freeDrag.ox + dx / freeDrag.scale));
   const y = Math.max(0, Math.min(formation.offsetHeight - fw * 0.6, freeDrag.oy + dy / freeDrag.scale));
   freeDrag.el.style.left = x + 'px';
   freeDrag.el.style.top = y + 'px';
