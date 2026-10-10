@@ -16,6 +16,7 @@
     --violet: #8B4FD1;
     --orange: #FF8C3D;
     --rose: #FF4FA3;
+    --argent: #DDE3F0;
     --creme: #FFF6E5;
     --slate: #9C8FC2;
     --unset: #5C5548;
@@ -151,6 +152,7 @@
   .pos.chacha{ color: var(--vert); }
   .pos.siyak{ color: var(--orange); }
   .pos.clave{ color: var(--rose); }
+  .pos.solo{ color: var(--argent); }
   /* Place réservée : couleur d'instrument conservée mais bien grisée */
   .pos.taken svg{ filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)) grayscale(0.25) saturate(0.65) brightness(0.78); }
   .pos.taken:hover svg{ filter: drop-shadow(0 0 5px rgba(255,201,60,0.6)) grayscale(0.25) saturate(0.65) brightness(0.78); }
@@ -174,6 +176,9 @@
 
   /* Zoom manuel de la formation — centré horizontalement, origine en haut au centre */
   .formation-viewport{ margin: 0 auto; display:flex; justify-content:center; }
+  /* organisateur : de la place de chaque côté de la grille pour y poser des silhouettes (atteignable en faisant défiler) */
+  .organizer-view .formation-viewport{ justify-content:flex-start; }
+  .organizer-view .formation-viewport::before, .organizer-view .formation-viewport::after{ content:''; flex:0 0 150px; }
   #formation{ transform-origin: top center; transition: transform 0.08s ease; }
 
   .zoom-control{ display:flex; align-items:center; gap:8px; }
@@ -470,6 +475,7 @@
         <div class="legend-item" data-filter="chacha"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--vert)"/><circle cx="20" cy="13" r="7.5" fill="var(--vert)"/></svg></span>Chacha</div>
         <div class="legend-item" data-filter="siyak"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--orange)"/><circle cx="20" cy="13" r="7.5" fill="var(--orange)"/></svg></span>Siyak</div>
         <div class="legend-item" data-filter="clave"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--rose)"/><circle cx="20" cy="13" r="7.5" fill="var(--rose)"/></svg></span>Clave</div>
+        <div class="legend-item" data-filter="solo"><span class="swatch"><svg viewBox="0 0 40 40"><path d="M6.5,33.5 C6.5,24 9,19.5 13,18 C10.5,15.5 10,11.5 12.5,8.5 C14,6.7 26,6.7 27.5,8.5 C30,11.5 29.5,15.5 27,18 C31,19.5 33.5,24 33.5,33.5 C33.5,36.5 6.5,36.5 6.5,33.5 Z" fill="var(--argent)"/><circle cx="20" cy="13" r="7.5" fill="var(--argent)"/></svg></span>Solo</div>
       </div>
     </div>
 
@@ -508,6 +514,7 @@
         <option value="chacha">Chacha</option>
         <option value="siyak">Siyak</option>
         <option value="clave">Clave</option>
+        <option value="solo">Solo</option>
       </select>
       <button class="btn btn-save" id="rowlabel-save-btn">Appliquer à toute la rangée</button>
     </div>
@@ -864,9 +871,9 @@ let initialDataLoaded = false; // true dès que le préchargement (avant connexi
 let codeRequired = true;       // false = mode test : le nom seul suffit (code à 4 chiffres désactivé côté serveur)
 let codeDisabledUntil = 0;     // horodatage (ms) de réactivation automatique du code, 0 = pas de limite
 
-const sectionLabel = { basse: 'Basse', contrebasse: 'Contrebasse', chan: 'Tambours chan', konk: 'Konk', chacha: 'Chacha', siyak: 'Siyak', clave: 'Clave' };
-const sectionAbbrev = { basse: 'BA', contrebasse: 'CB', chan: 'TC', konk: 'KO', chacha: 'CC', siyak: 'SY', clave: 'CL' };
-const sectionColorVar = { basse: '--bleu', contrebasse: '--violet', chan: '--rouge', konk: '--jaune', chacha: '--vert', siyak: '--orange', clave: '--rose' };
+const sectionLabel = { basse: 'Basse', contrebasse: 'Contrebasse', chan: 'Tambours chan', konk: 'Konk', chacha: 'Chacha', siyak: 'Siyak', clave: 'Clave', solo: 'Solo' };
+const sectionAbbrev = { basse: 'BA', contrebasse: 'CB', chan: 'TC', konk: 'KO', chacha: 'CC', siyak: 'SY', clave: 'CL', solo: 'SO' };
+const sectionColorVar = { basse: '--bleu', contrebasse: '--violet', chan: '--rouge', konk: '--jaune', chacha: '--vert', siyak: '--orange', clave: '--rose', solo: '--argent' };
 function keyOf(r,c){ return r + '-' + c; }
 
 // Silhouette humaine stylisée, vue de dessus (épaules arrondies + tête)
@@ -1182,7 +1189,7 @@ function updateStats(){
   document.getElementById('stat-total').textContent = ROWS * COLS + freeList.length;
   document.getElementById('intro-sub').textContent = `${ROWS * COLS} places · ${ROWS} rangées de 5. Clique une place libre de ton instrument pour réserver.`;
 
-  const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0, siyak:0, clave:0 };
+  const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0, siyak:0, clave:0, solo:0 };
   Object.values(grid).forEach(d => {
     if(d.name && d.instrument && counts.hasOwnProperty(d.instrument)) counts[d.instrument]++;
   });
@@ -1782,6 +1789,7 @@ function renderOrganizerPopup(r, c, data){
       <option value="chacha" ${data.instrument==='chacha'?'selected':''}>Chacha</option>
       <option value="siyak" ${data.instrument==='siyak'?'selected':''}>Siyak</option>
       <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
+      <option value="solo" ${data.instrument==='solo'?'selected':''}>Solo</option>
     </select>
     <input type="text" id="popup-orga-name" class="seat-popup-select" value="${data.name || ''}" placeholder="Nom du musicien" autocomplete="off">
     <button class="btn btn-save seat-popup-btn" id="popup-orga-save-btn">Enregistrer</button>
@@ -1880,6 +1888,7 @@ function renderReservePopup(r, c, data){
       <option value="chacha">Chacha</option>
       <option value="siyak">Siyak</option>
       <option value="clave">Clave</option>
+      <option value="solo">Solo</option>
     </select>`;
   popup.innerHTML = `
     <p class="seat-popup-instr">${instrDisplay}</p>
@@ -1999,6 +2008,7 @@ function renderDetail(r,c){
         <option value="chacha" ${data.instrument==='chacha'?'selected':''}>Chacha</option>
         <option value="siyak" ${data.instrument==='siyak'?'selected':''}>Siyak</option>
         <option value="clave" ${data.instrument==='clave'?'selected':''}>Clave</option>
+        <option value="solo" ${data.instrument==='solo'?'selected':''}>Solo</option>
       </select>
       <label for="inp-name">Nom du musicien (optionnel)</label>
       <input type="text" id="inp-name" value="${data.name || ''}" placeholder="Ex. Jean Baptiste" autocomplete="off">
@@ -2085,6 +2095,7 @@ function renderDetail(r,c){
       <option value="chacha">Chacha</option>
       <option value="siyak">Siyak</option>
       <option value="clave">Clave</option>
+      <option value="solo">Solo</option>
     </select>`;
   panel.innerHTML = `
     <p class="pos-title">${seatTitle(r,c)}</p>
@@ -2304,8 +2315,10 @@ function freeBounds(){
   const mainEl = document.querySelector('.main'), formation = document.getElementById('formation');
   if(!mainEl) return { min: 0, max: 99999 };
   // position de la grille dans la zone centrale, SANS tenir compte du zoom ni du défilement (sinon la silhouette bougerait)
-  const leftContent = Math.max(0, (mainEl.clientWidth - formation.offsetWidth) / 2);
-  return { min: Math.max(0, FREE_PAD + 22 - leftContent), max: FREE_PAD + mainEl.clientWidth - 6 - leftContent };
+  const side = document.getElementById('main-layout').classList.contains('organizer-view') ? 150 : 0;
+  const leftContent = side + Math.max(0, (mainEl.clientWidth - 2 * side - formation.offsetWidth) / 2);
+  const total = 2 * side + Math.max(formation.offsetWidth, mainEl.clientWidth - 2 * side);
+  return { min: Math.max(0, FREE_PAD + 22 - leftContent), max: FREE_PAD - leftContent + total - 6 };
 }
 function layoutFree(){
   const layer = document.getElementById('free-layer');
