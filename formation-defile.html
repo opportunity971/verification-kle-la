@@ -104,7 +104,7 @@
   .main-header h2{ margin:0; font-size:1.1rem; font-weight:700; color: var(--jaune); }
   .direction-hint{ font-size:0.76rem; color: var(--slate); }
 
-  .formation{ display:flex; flex-direction:column; gap:7px; min-width: 420px; max-width:560px; margin: 0 auto; }
+  .formation{ position:relative; display:flex; flex-direction:column; gap:7px; min-width: 420px; max-width:560px; margin: 0 auto; }
   .row{ display:grid; grid-template-columns: 26px repeat(5, 1fr); gap:9px; align-items:center; }
   .row-num{ font-size:0.7rem; color: var(--slate); text-align:right; font-variant-numeric: tabular-nums; font-weight:600; }
   .row-group{ display:flex; flex-direction:column; gap:3px; }
@@ -163,6 +163,9 @@
   .pos.blocked:hover{ transform: none; cursor: not-allowed; }
   .pos.blocked.blocked-empty:hover svg{ filter: none; }
 
+  #free-layer{ position:absolute; left:-300px; top:0; width:calc(100% + 600px); height:100%; pointer-events:none; z-index:3; }
+  .pos.free{ position:absolute; width:66px; pointer-events:auto; }
+  .organizer-view .pos.free{ cursor:grab; touch-action:none; outline:1px dashed rgba(255,201,60,0.55); outline-offset:-4px; border-radius:50%; }
   .pos.removed{ visibility: hidden; }
   .organizer-view .pos.removed{ visibility: visible; cursor:pointer; }
   .organizer-view .pos.removed:hover svg{ filter: drop-shadow(0 0 4px rgba(255,201,60,0.6)); }
@@ -510,6 +513,9 @@
     </div>
 
     <div id="rowmanage-block" style="display:none;">
+      <p class="panel-title">SILHOUETTES LIBRES</p>
+      <button class="btn btn-save" id="add-free-btn">➕ Ajouter une silhouette</button>
+      <p class="empty-msg" style="margin:6px 0 16px;">La silhouette apparaît au milieu de l'écran : fais-la glisser où tu veux (solistes, konk…). Clique dessus pour lui donner un instrument ou un musicien.</p>
       <p class="panel-title">GESTION DES RANGÉES</p>
       <label for="insert-row-select">Insérer une nouvelle rangée avant :</label>
       <select id="insert-row-select"></select>
@@ -836,6 +842,13 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxPsziKBTl1xVIVGtFb5rbB
 const PHOTOS_URL = 'https://raw.githubusercontent.com/opportunity971/verification-kle-la/main/photos.json';
 
 let grid = {};
+let freeList = [];      // silhouettes libres ajoutées par l'organisateur : [{ id, x, y }]
+let freeSig = '';
+const FREE_BASE = 1000;
+const FREE_PAD = 300;   // la couche des silhouettes libres déborde de 300 px de chaque côté de la grille // une silhouette libre n°N est la « rangée » 1000+N, position 1
+const isFreeRow = r => Number(r) > FREE_BASE;
+const seatTitle = (r,c) => isFreeRow(r) ? 'Silhouette libre' : ('Rangée ' + r + ', position ' + c);
+const seatWhere = p => isFreeRow(p.r) ? 'une silhouette libre' : ('rangée ' + p.r + ', position ' + p.c);
 let roster = []; // array of authorized full names
 let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
 let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
@@ -1026,6 +1039,7 @@ async function loadAllData(){
   try {
     const data = await apiGet();
     grid = data.grid || emptyGrid();
+    freeList = Array.isArray(data.free) ? data.free : [];
     roster = data.roster || [];
     rowLabels = data.labels || {};
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
@@ -1039,6 +1053,7 @@ async function loadAllData(){
     return true;
   } catch(err){
     grid = emptyGrid();
+    freeList = [];
     roster = [];
     rowLabels = {};
     return false;
@@ -1102,7 +1117,7 @@ function buildGridDOM(){
 function refreshCell(r,c){
   const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
   const data = grid[keyOf(r,c)] || {instrument:'',name:'',blocked:false,removed:false};
-  el.className = 'pos';
+  el.className = el.dataset.free ? 'pos free' : 'pos';
   if(data.instrument) el.classList.add(data.instrument);
   if(data.name) el.classList.add('taken');
   if(data.blocked){
@@ -1152,7 +1167,9 @@ function refreshCell(r,c){
 }
 
 function refreshAll(){
+  syncFreeDOM();
   for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) refreshCell(r,c);
+  freeList.forEach(f => refreshCell(FREE_BASE + f.id, 1));
   updateStats();
 }
 
@@ -1161,7 +1178,7 @@ function updateStats(){
   const blocked = Object.values(grid).filter(d => d.blocked).length;
   document.getElementById('stat-filled').textContent = filled;
   document.getElementById('stat-blocked').textContent = blocked;
-  document.getElementById('stat-total').textContent = ROWS * COLS;
+  document.getElementById('stat-total').textContent = ROWS * COLS + freeList.length;
   document.getElementById('intro-sub').textContent = `${ROWS * COLS} places · ${ROWS} rangées de 5. Clique une place libre de ton instrument pour réserver.`;
 
   const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0, siyak:0, clave:0 };
@@ -1455,6 +1472,7 @@ async function reloadAfterRowStructureChange(){
   selected = null;
   await loadAllData();
   buildGridDOM();
+  buildFreeDOM();
   applyZoom();
   refreshAll();
   renderAllRowLabels();
@@ -1562,7 +1580,9 @@ async function loadGrid(){
   }
 }
 
+let popupOpenedAt = 0;   // un léger décalage de page juste après l'ouverture de la bulle ne doit pas la refermer
 function selectPos(r,c){
+  popupOpenedAt = Date.now();
   selected = {r,c};
   organizerPopupExpanded = false; // chaque nouvelle sélection repart sur la bulle simple
   refreshAll();
@@ -1610,7 +1630,7 @@ function showSeatPopup(r,c){
 
   const existing = findUserPosition();
   if(existing && (existing.r !== r || existing.c !== c)){
-    renderMessagePopup(r, c, `Tu as déjà réservé une place : rangée ${existing.r}, position ${existing.c}. Libère-la d'abord si tu veux en changer.`);
+    renderMessagePopup(r, c, `Tu as déjà réservé une place : ${seatWhere(existing)}. Libère-la d'abord si tu veux en changer.`);
     return;
   }
 
@@ -1789,6 +1809,7 @@ function renderOrganizerPopup(r, c, data){
     showSeatPopup(r,c);
   });
   document.getElementById('popup-orga-remove-btn').addEventListener('click', async () => {
+    if(isFreeRow(r)){ await removeFreeSilhouette(r); return; }
     await setCellRemote(r, c, '', '', false, true);
     showToast('Silhouette supprimée.');
     renderDetail(r,c);
@@ -1940,7 +1961,7 @@ document.addEventListener('mousedown', handlePotentialOutsideStart, true);
 // Repositionner/masquer la bulle si la vue défile ou se redimensionne —
 // mais pas si c'est le clavier virtuel mobile qui s'ouvre/se déplace
 // pendant que l'utilisateur interagit avec un champ de la bulle.
-window.addEventListener('scroll', () => { if(!popupHasFocus) hideSeatPopup(); }, true);
+window.addEventListener('scroll', () => { if(!popupHasFocus && Date.now() - popupOpenedAt > 600) hideSeatPopup(); }, true);
 window.addEventListener('resize', () => { if(!popupHasFocus) hideSeatPopup(); });
 
 // ------------------------------------------------------------
@@ -1953,7 +1974,7 @@ function renderDetail(r,c){
   if(isOrganizer){
     if(data.removed){
       panel.innerHTML = `
-        <p class="pos-title">Rangée ${r}, position ${c}</p>
+        <p class="pos-title">${seatTitle(r,c)}</p>
         <p class="empty-msg">Cette silhouette est supprimée de la formation (place qui n'existe pas physiquement).</p>
         <button class="btn btn-save" id="btn-restore">Restaurer cette place</button>
       `;
@@ -1965,7 +1986,7 @@ function renderDetail(r,c){
       return;
     }
     panel.innerHTML = `
-      <p class="pos-title">Rangée ${r}, position ${c}</p>
+      <p class="pos-title">${seatTitle(r,c)}</p>
       ${data.blocked ? '<p class="occupant-instr">🔒 Place actuellement bloquée</p>' : ''}
       <label for="inp-instr">Instrument</label>
       <select id="inp-instr">
@@ -2000,6 +2021,7 @@ function renderDetail(r,c){
       renderDetail(r,c);
     });
     document.getElementById('btn-remove').addEventListener('click', async () => {
+      if(isFreeRow(r)){ await removeFreeSilhouette(r); return; }
       await setCellRemote(r, c, '', '', false, true);
       showToast('Silhouette supprimée.');
       renderDetail(r,c);
@@ -2012,14 +2034,14 @@ function renderDetail(r,c){
   }
 
   if(data.blocked){
-    panel.innerHTML = `<p class="pos-title">Rangée ${r}, position ${c}</p><p class="empty-msg">🔒 Cette place est réservée par l'organisation et n'est pas disponible à la réservation.</p>`;
+    panel.innerHTML = `<p class="pos-title">${seatTitle(r,c)}</p><p class="empty-msg">🔒 Cette place est réservée par l'organisation et n'est pas disponible à la réservation.</p>`;
     return;
   }
   const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Non attribué';
   if(data.name){
     const isMine = data.name === currentUserName;
     panel.innerHTML = `
-      <p class="pos-title">Rangée ${r}, position ${c}</p>
+      <p class="pos-title">${seatTitle(r,c)}</p>
       <p class="occupant-name">${data.name}</p>
       <p class="occupant-instr">${instrDisplay} — place réservée${isMine ? ' (toi)' : ''}</p>
       ${isMine ? '<button class="btn btn-clear" id="btn-release">Libérer ma place</button>' : ''}
@@ -2044,9 +2066,9 @@ function renderDetail(r,c){
   const existing = isOrganizer ? null : findUserPosition();
   if(existing && (existing.r !== r || existing.c !== c)){
     panel.innerHTML = `
-      <p class="pos-title">Rangée ${r}, position ${c}</p>
+      <p class="pos-title">${seatTitle(r,c)}</p>
       <p class="occupant-instr">${instrDisplay} — place libre</p>
-      <p class="empty-msg">Tu as déjà réservé une place : rangée ${existing.r}, position ${existing.c}. Libère-la d'abord si tu veux en changer.</p>
+      <p class="empty-msg">Tu as déjà réservé une place : ${seatWhere(existing)}. Libère-la d'abord si tu veux en changer.</p>
     `;
     return;
   }
@@ -2064,7 +2086,7 @@ function renderDetail(r,c){
       <option value="clave">Clave</option>
     </select>`;
   panel.innerHTML = `
-    <p class="pos-title">Rangée ${r}, position ${c}</p>
+    <p class="pos-title">${seatTitle(r,c)}</p>
     <p class="occupant-instr">${instrDisplay} — place libre</p>
     ${instrSelectHtml}
     <p class="occupant-name">${currentUserName}</p>
@@ -2228,6 +2250,123 @@ document.querySelectorAll('.legend-item').forEach(item => {
 // (le ratio brut doigt-à-doigt est désormais atténué avant d'être
 // appliqué au niveau de zoom).
 // ------------------------------------------------------------
+
+// ------------------------------------------------------------
+// Silhouettes libres : ajoutées par l'organisateur, placées où il veut
+// ------------------------------------------------------------
+let freeDrag = null, freeDragMoved = false;
+
+function freeSignature(){ return freeList.map(f => f.id + ':' + f.x + ':' + f.y).join('|'); }
+
+function makeFreeEl(f){
+  const el = document.createElement('div');
+  el.className = 'pos free';
+  el.dataset.r = FREE_BASE + f.id;
+  el.dataset.c = 1;
+  el.dataset.free = f.id;
+  el.addEventListener('click', () => {
+    if(freeDragMoved){ freeDragMoved = false; return; }
+    selectPos(FREE_BASE + f.id, 1);
+  });
+  el.addEventListener('pointerdown', freePointerDown);
+  return el;
+}
+
+// Met la couche à jour SANS tout reconstruire (les silhouettes existantes ne sont jamais retirées du DOM,
+// sinon le navigateur décale la page et referme la bulle ouverte).
+function buildFreeDOM(){
+  const formation = document.getElementById('formation');
+  let layer = document.getElementById('free-layer');
+  if(!layer){ layer = document.createElement('div'); layer.id = 'free-layer'; formation.appendChild(layer); }
+  const wanted = new Set(freeList.map(f => String(f.id)));
+  Array.from(layer.children).forEach(el => { if(!wanted.has(el.dataset.free)) el.remove(); });
+  freeList.forEach(f => {
+    let el = layer.querySelector(`[data-free="${f.id}"]`);
+    if(!el){ el = makeFreeEl(f); layer.appendChild(el); }
+    el.style.left = (f.x + FREE_PAD) + 'px';
+    el.style.top = f.y + 'px';
+  });
+  freeSig = freeSignature();
+}
+
+// Reconstruit la couche seulement si la liste a changé (ajout, suppression, déplacement par un autre organisateur).
+function syncFreeDOM(){
+  if(!document.getElementById('free-layer') || freeSignature() !== freeSig) buildFreeDOM();
+}
+
+function freePointerDown(e){
+  if(!isOrganizer) return;
+  const el = e.currentTarget;
+  freeDrag = { el, id: Number(el.dataset.free), sx: e.clientX, sy: e.clientY,
+               ox: parseFloat(el.style.left) || 0, oy: parseFloat(el.style.top) || 0,
+               scale: zoomLevel / 100, moved: false };
+  try { el.setPointerCapture(e.pointerId); } catch(_){}
+  e.preventDefault();
+}
+document.addEventListener('pointermove', (e) => {
+  if(!freeDrag) return;
+  const dx = e.clientX - freeDrag.sx, dy = e.clientY - freeDrag.sy;
+  if(!freeDrag.moved && Math.hypot(dx, dy) < 6) return;
+  if(!freeDrag.moved){ freeDrag.moved = true; hideSeatPopup(); }
+  const formation = document.getElementById('formation');
+  // à gauche, on ne peut pas aller au-delà du bord visible de la zone (sinon la silhouette passerait sous le panneau et serait perdue)
+  const mainEl = document.querySelector('.main'), layer = document.getElementById('free-layer');
+  const minX = (mainEl && layer) ? Math.max(0, (mainEl.getBoundingClientRect().left + 6 - layer.getBoundingClientRect().left) / freeDrag.scale) : 0;
+  const x = Math.max(minX, Math.min(formation.offsetWidth + 2 * FREE_PAD - 66, freeDrag.ox + dx / freeDrag.scale));
+  const y = Math.max(0, Math.min(formation.offsetHeight - 40, freeDrag.oy + dy / freeDrag.scale));
+  freeDrag.el.style.left = x + 'px';
+  freeDrag.el.style.top = y + 'px';
+});
+async function endFreeDrag(){
+  if(!freeDrag) return;
+  const d = freeDrag; freeDrag = null;
+  if(!d.moved) return;
+  freeDragMoved = true; setTimeout(() => { freeDragMoved = false; }, 350);
+  const x = Math.round(parseFloat(d.el.style.left)) - FREE_PAD, y = Math.round(parseFloat(d.el.style.top));
+  const f = freeList.find(v => v.id === d.id);
+  if(f){ f.x = x; f.y = y; freeSig = freeSignature(); }
+  try {
+    const r = await apiPost({ action:'moveFree', id:d.id, x, y, password: organizerPassword });
+    if(!r.ok) showToast(r.error || "Erreur d'enregistrement.");
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+}
+document.addEventListener('pointerup', endFreeDrag);
+document.addEventListener('pointercancel', endFreeDrag);
+
+async function addFreeSilhouette(){
+  const formation = document.getElementById('formation');
+  const rect = formation.getBoundingClientRect(), scale = zoomLevel / 100;
+  let y = (window.innerHeight / 2 - rect.top) / scale - 33;
+  y = Math.max(0, Math.min(formation.offsetHeight - 70, y));
+  const x = formation.offsetWidth / 2 - 33 + (freeList.length % 5) * 24;
+  try {
+    const r = await apiPost({ action:'addFree', x: Math.round(x), y: Math.round(y), password: organizerPassword });
+    if(r.ok){
+      await loadAllData();
+      buildFreeDOM();
+      refreshAll();
+      showToast('Silhouette ajoutée : fais-la glisser où tu veux.');
+    } else showToast(r.error || "Erreur d'enregistrement.");
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+}
+
+async function removeFreeSilhouette(r){
+  if(!confirm('Supprimer définitivement cette silhouette ?')) return;
+  try {
+    const res = await apiPost({ action:'removeFree', id: Number(r) - FREE_BASE, password: organizerPassword });
+    if(res.ok){
+      selected = null;
+      hideSeatPopup();
+      await loadAllData();
+      buildFreeDOM();
+      refreshAll();
+      document.getElementById('detail-panel').innerHTML = '<p class="empty-msg">Silhouette supprimée.</p>';
+      showToast('Silhouette supprimée.');
+    } else showToast(res.error || 'Erreur.');
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+}
+document.getElementById('add-free-btn').addEventListener('click', addFreeSilhouette);
+
 const ZOOM_MIN = 40, ZOOM_MAX = 200, ZOOM_STEP = 5;
 const PINCH_DAMPING = 0.5; // 1 = sensibilité brute, plus petit = moins sensible
 let zoomLevel = 100;
