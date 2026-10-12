@@ -581,7 +581,7 @@
   <div class="qr-box" id="qr-box"></div>
   <div class="qr-timer"><i id="qr-timer-bar"></i></div>
   <p class="qr-count"><span id="qr-count">0</span> présent(s)</p>
-  <p class="qr-hint">Scanne ce QR code avec l'appareil photo de ton téléphone pour enregistrer ta présence. Il se renouvelle toutes les 30 secondes.</p>
+  <p class="qr-hint">Scanne ce QR code avec l'appareil photo de ton téléphone pour enregistrer ta présence. Il se renouvelle toutes les 13 secondes.</p>
 </div>
 
 <div class="checkin-overlay" id="checkin-overlay">
@@ -2641,8 +2641,8 @@ window.addEventListener('resize', positionAutoDropdown);
 // RÉPÉTITIONS : pointage par QR, compteurs, panneau organisateur
 // ------------------------------------------------------------
 const SAVED_LOGIN_KEY = 'klelamass_login_v1';
-const REP_POLL_MS = 8000;        // rafraîchissement du QR / des présents côté organisateur
-const REP_TOKEN_STEP = 30;       // doit correspondre à TOKEN_STEP_SEC dans Code.gs
+const REP_POLL_MS = 4000;        // rafraîchissement du QR / des présents côté organisateur
+const REP_TOKEN_STEP = 13;       // doit correspondre à TOKEN_STEP_SEC dans Code.gs
 
 let pendingCheckin = null;   // { session, token } issu d'un QR scanné, pas encore validé
 let myRep = null;            // { count, total } : compteur du musicien connecté
