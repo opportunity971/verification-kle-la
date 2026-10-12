@@ -69,6 +69,44 @@ details textarea{width:100%;min-height:70px}
 .rl{max-height:380px;overflow:auto;font-size:13px}
 .rl div{display:flex;justify-content:space-between;padding:2px 0}
 .rl button{background:none;border:0;color:#ff8a8a;cursor:pointer}
+#presInfo .live{color:#7dffc9}
+#presInfo .mine{color:var(--yellow);margin-top:4px}
+#pop .rep{color:#00875f;font-weight:700;font-size:12px;margin:4px 0 0}
+#pop .rep:empty{display:none}
+.banner.chk{background:#fff3c4;color:#6a4a00;margin:6px 0;border-radius:8px;display:none}
+.rep-live-title{margin:0 0 6px;font-weight:800;color:var(--yellow)}
+.rep-badge{display:inline-block;background:var(--green);color:#12041f;font-size:10px;font-weight:900;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
+.rep-empty{color:#cbbbe0;font-size:12px;margin:6px 0}
+.rep-list{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
+.rep-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border-radius:8px;padding:0 10px 0 0}
+.rep-item.open{box-shadow:inset 3px 0 0 var(--green)}
+.rep-item-main{flex:1;text-align:left;background:none;border:0;color:#fff;cursor:pointer;padding:6px 10px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.rep-item-date{font-weight:800;font-size:13px}
+.rep-item-label{font-size:11px;opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rep-item-label em{color:var(--green);font-style:normal;font-weight:800}
+.rep-item-count{font-weight:900;color:var(--yellow)}
+.rep-count-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,.07);border-radius:8px;padding:5px 10px;font-size:13px}
+.rep-count-row b{color:var(--yellow)}
+.rep-count-row small{opacity:.7;margin-left:6px}
+.rep-count-row .rep-x{background:none;border:0;color:#ff8a8a;cursor:pointer;font-size:14px;padding:0 4px}
+#rep-detail{margin-top:10px;padding:10px;background:rgba(0,0,0,.3);border-radius:12px}
+.rep-detail-title{margin:0 0 8px;font-weight:800;font-size:13px;color:var(--yellow)}
+details input[type=date]{background:#fff;color:#222;border:0;border-radius:8px;padding:5px 8px}
+.qr-overlay{position:fixed;inset:0;z-index:120;background:#12041f;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;overflow-y:auto}
+.qr-overlay h2{margin:0;font-size:20px;color:var(--yellow)}
+.qr-box{background:#fff;border-radius:16px;padding:8px;width:min(72vmin,520px)}
+.qr-box svg{width:100%;height:auto;display:block}
+.qr-timer{height:6px;width:min(72vmin,520px);background:rgba(255,255,255,.18);border-radius:3px;overflow:hidden}
+.qr-timer i{display:block;height:100%;width:0;background:var(--yellow)}
+.qr-count{margin:0;font-weight:900;font-size:26px;color:var(--green)}
+.qr-hint{margin:0;opacity:.8;font-size:14px;max-width:420px;line-height:1.5}
+.qr-close{position:absolute;top:14px;right:18px}
+.chk-ov{position:fixed;inset:0;z-index:130;background:rgba(12,4,28,.93);display:none;align-items:center;justify-content:center;padding:20px}
+.chk-card{background:#fff;color:#222;border-radius:18px;padding:26px 22px;max-width:340px;width:100%;text-align:center}
+.chk-icon{font-size:42px;line-height:1;margin-bottom:8px}
+.chk-card h2{margin:0 0 8px;color:#5b1a8a;font-size:20px}
+.chk-card p{margin:0 0 10px;font-size:15px;line-height:1.5;white-space:pre-line}
+.chk-card .btn{width:100%;margin-top:6px}
 </style>
 </head>
 <body>
@@ -79,7 +117,6 @@ details textarea{width:100%;min-height:70px}
 </header>
 <div class="bar">
   <button class="btn" id="btnLogin">👤 Je me connecte</button>
-  <button class="btn pink" id="btnPresent" style="display:none">✋ Je suis présent</button>
   <button class="btn alt" id="btnOrga">🔑 Organisateur</button>
   <span style="display:inline-flex;gap:6px;align-items:center">
     <button class="btn alt sm" id="zm">−</button>
@@ -100,11 +137,26 @@ details textarea{width:100%;min-height:70px}
         <div class="row"><input type="text" id="tTitle" placeholder="Titre"></div>
         <div class="row"><input type="text" id="tSub" placeholder="Sous-titre"><button class="btn sm" id="tOk">OK</button></div>
       </details>
-      <details open><summary>Pointage des présences</summary>
-        <div class="row" style="display:none"><input type="text" id="sessLbl" placeholder="Séance (ex. Répétition 10/10)"><button class="btn sm" id="sessOk">OK</button></div>
-        <div class="row"><button class="btn sm" id="presToggle">Ouvrir le pointage</button></div>
-        <div class="row"><button class="btn sm pink" id="presReset">Nouvelle séance (vider les présences)</button></div>
-        <div class="small">Les participants ne peuvent pointer que quand le pointage est ouvert : ouvre-le au début de la répétition et ferme-le ensuite.</div>
+      <details open><summary>Répétitions (pointage par QR)</summary>
+        <div id="rep-open-form">
+          <div class="row"><input type="text" id="rep-label-input" placeholder="Libellé (optionnel) ex. Répétition générale" maxlength="80" autocomplete="off" style="width:100%"></div>
+          <div class="row"><input type="date" id="rep-date-input"><button class="btn sm" id="rep-open-btn">▶ Ouvrir une répétition</button></div>
+        </div>
+        <div id="rep-live" style="display:none">
+          <p class="rep-live-title"><span id="rep-live-title"></span><span class="rep-badge">EN COURS</span></p>
+          <div class="row"><b id="rep-live-count" style="font-size:20px;color:var(--green)">0</b> présent(s) en ce moment</div>
+          <div class="row"><button class="btn sm" id="rep-show-qr-btn">📺 Afficher le QR (plein écran)</button></div>
+          <div class="row"><button class="btn sm pink" id="rep-close-btn">■ Clôturer la répétition</button></div>
+        </div>
+        <p class="small" style="margin:12px 0 4px"><b>HISTORIQUE</b> (touche une ligne pour le détail)</p>
+        <div class="rep-list" id="rep-sessions-list"><p class="rep-empty">Chargement…</p></div>
+        <div id="rep-detail" style="display:none"></div>
+        <p class="small" style="margin:14px 0 4px"><b>COMPTEURS PAR PARTICIPANT</b> <span id="rep-counts-total"></span></p>
+        <div class="row"><select id="rep-sort-select"><option value="name">Trier par nom</option><option value="asc">Les moins présents d'abord</option><option value="desc">Les plus présents d'abord</option></select></div>
+        <div class="row"><input type="text" id="rep-search-input" placeholder="Rechercher…" autocomplete="off"></div>
+        <div class="rep-list" id="rep-counts-list"></div>
+        <div class="row" style="margin-top:12px"><button class="btn sm pink" id="rep-reset-btn">🗑 Remettre les répétitions à zéro</button></div>
+        <div class="small">À faire après la phase de test : efface toutes les répétitions et présences (les compteurs repartent à 0). Le plan et la liste des participants ne changent pas. Plusieurs organisateurs peuvent afficher le QR de la même répétition.</div>
       </details>
       <details style="display:none"><summary>Zones (arcs)</summary>
         <div id="arcsEd"></div>
@@ -142,6 +194,7 @@ details textarea{width:100%;min-height:70px}
 <div class="ov" id="loginOv">
   <div class="card">
     <h2>Connexion</h2>
+    <div class="banner chk" id="lbanner"></div>
     <div class="small" style="color:#555">Entre ton prénom et ton nom pour réserver ta place.<span class="codeonly"> Ajoute ton code.</span></div>
     <input id="lp" placeholder="Prénom" autocomplete="given-name">
     <input id="ln" placeholder="Nom" autocomplete="family-name">
@@ -159,7 +212,274 @@ details textarea{width:100%;min-height:70px}
   </div>
 </div>
 
+
+<div class="qr-overlay" id="qr-overlay">
+  <button class="btn alt qr-close" id="qr-close-btn">✕ Fermer</button>
+  <h2 id="qr-title"></h2>
+  <div class="qr-box" id="qr-box"></div>
+  <div class="qr-timer"><i id="qr-timer-bar"></i></div>
+  <p class="qr-count"><span id="qr-count">0</span> présent(s)</p>
+  <p class="qr-hint">Scanne ce QR code avec l'appareil photo de ton téléphone pour enregistrer ta présence. Il se renouvelle toutes les 30 secondes.</p>
+</div>
+
+<div class="chk-ov" id="chk-ov">
+  <div class="chk-card">
+    <div class="chk-icon" id="chk-icon"></div>
+    <h2 id="chk-title"></h2>
+    <p id="chk-text"></p>
+    <button class="btn" id="chk-primary"></button>
+    <button class="btn alt" id="chk-secondary" style="display:none;color:#444;background:#eee"></button>
+  </div>
+</div>
+
 <script>
+// ------------------------------------------------------------
+// Mini générateur de QR code (mode octets, correction d'erreur M,
+// versions 1 à 10 — jusqu'à 213 caractères). Écrit pour cette page afin
+// de ne dépendre d'aucune bibliothèque ni d'aucun site externe.
+// Renvoie la matrice (tableau de lignes de booléens, true = module noir).
+// ------------------------------------------------------------
+var QR = (function(){
+  // Corps de Galois GF(256), polynôme 0x11D
+  var EXP = new Array(512), LOG = new Array(256);
+  (function(){
+    var x = 1;
+    for(var i = 0; i < 255; i++){
+      EXP[i] = x; LOG[x] = i;
+      x <<= 1; if(x & 0x100) x ^= 0x11D;
+    }
+    for(var j = 255; j < 512; j++) EXP[j] = EXP[j - 255];
+  })();
+  function gfMul(a, b){ return (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]]; }
+
+  function rsGenerator(n){
+    var poly = [1];
+    for(var i = 0; i < n; i++){
+      var next = new Array(poly.length + 1).fill(0);
+      for(var j = 0; j < poly.length; j++){
+        next[j] ^= poly[j];
+        next[j + 1] ^= gfMul(poly[j], EXP[i]);
+      }
+      poly = next;
+    }
+    return poly;
+  }
+  function rsRemainder(data, n){
+    var gen = rsGenerator(n);
+    var msg = data.concat(new Array(n).fill(0));
+    for(var i = 0; i < data.length; i++){
+      var coef = msg[i];
+      if(coef !== 0){
+        for(var j = 0; j < gen.length; j++) msg[i + j] ^= gfMul(gen[j], coef);
+      }
+    }
+    return msg.slice(data.length);
+  }
+
+  // Niveau M : { mots de correction par bloc, groupes [nb blocs, mots de données par bloc] }
+  var EC_M = [null,
+    { ec:10, g:[[1,16]] }, { ec:16, g:[[1,28]] }, { ec:26, g:[[1,44]] }, { ec:18, g:[[2,32]] },
+    { ec:24, g:[[2,43]] }, { ec:16, g:[[4,27]] }, { ec:18, g:[[4,31]] }, { ec:22, g:[[2,38],[2,39]] },
+    { ec:22, g:[[3,36],[2,37]] }, { ec:26, g:[[4,43],[1,44]] }
+  ];
+  var ALIGN = [null, [], [6,18], [6,22], [6,26], [6,30], [6,34], [6,22,38], [6,24,42], [6,26,46], [6,28,50]];
+
+  function dataCapacity(v){
+    return EC_M[v].g.reduce(function(s, g){ return s + g[0] * g[1]; }, 0);
+  }
+
+  function encode(text){
+    var bytes = Array.prototype.slice.call(new TextEncoder().encode(text));
+    var ver = 0;
+    for(var v = 1; v <= 10; v++){
+      var ccBits = v <= 9 ? 8 : 16;
+      if(Math.ceil((4 + ccBits + bytes.length * 8) / 8) <= dataCapacity(v)){ ver = v; break; }
+    }
+    if(!ver) throw new Error('Texte trop long pour le QR code');
+
+    // Flux de bits : mode octets + longueur + données
+    var bits = [];
+    function put(val, len){ for(var i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); }
+    put(4, 4);
+    put(bytes.length, ver <= 9 ? 8 : 16);
+    bytes.forEach(function(b){ put(b, 8); });
+    var capBits = dataCapacity(ver) * 8;
+    put(0, Math.min(4, capBits - bits.length));
+    while(bits.length % 8) bits.push(0);
+    var codewords = [];
+    for(var i = 0; i < bits.length; i += 8){
+      var byte = 0;
+      for(var k = 0; k < 8; k++) byte = (byte << 1) | bits[i + k];
+      codewords.push(byte);
+    }
+    for(var pad = 0xEC; codewords.length < dataCapacity(ver); pad ^= 0xEC ^ 0x11) codewords.push(pad);
+
+    // Découpage en blocs, correction d'erreur, entrelacement
+    var info = EC_M[ver], blocks = [], pos = 0;
+    info.g.forEach(function(g){
+      for(var b = 0; b < g[0]; b++){
+        var dat = codewords.slice(pos, pos + g[1]);
+        pos += g[1];
+        blocks.push({ dat: dat, ecc: rsRemainder(dat, info.ec) });
+      }
+    });
+    var final = [];
+    var maxLen = Math.max.apply(null, blocks.map(function(b){ return b.dat.length; }));
+    for(var d = 0; d < maxLen; d++) blocks.forEach(function(b){ if(d < b.dat.length) final.push(b.dat[d]); });
+    for(var e = 0; e < info.ec; e++) blocks.forEach(function(b){ final.push(b.ecc[e]); });
+
+    return { ver: ver, data: final };
+  }
+
+  function build(text){
+    var enc = encode(text), ver = enc.ver, size = 17 + 4 * ver;
+    var modules = [], isFn = [];
+    for(var y = 0; y < size; y++){ modules.push(new Array(size).fill(false)); isFn.push(new Array(size).fill(false)); }
+    function setFn(x, y, dark){
+      if(x < 0 || y < 0 || x >= size || y >= size) return;
+      modules[y][x] = dark; isFn[y][x] = true;
+    }
+    function finder(cx, cy){
+      for(var dy = -4; dy <= 4; dy++) for(var dx = -4; dx <= 4; dx++){
+        var dist = Math.max(Math.abs(dx), Math.abs(dy));
+        setFn(cx + dx, cy + dy, dist !== 2 && dist !== 4);
+      }
+    }
+    function alignment(cx, cy){
+      for(var dy = -2; dy <= 2; dy++) for(var dx = -2; dx <= 2; dx++)
+        setFn(cx + dx, cy + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }
+    function bit(x, i){ return ((x >>> i) & 1) !== 0; }
+
+    function drawFormat(mask){
+      var d = (0 << 3) | mask; // niveau M = 00
+      var rem = d;
+      for(var i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+      var fb = ((d << 10) | rem) ^ 0x5412;
+      for(var a = 0; a <= 5; a++) setFn(8, a, bit(fb, a));
+      setFn(8, 7, bit(fb, 6)); setFn(8, 8, bit(fb, 7)); setFn(7, 8, bit(fb, 8));
+      for(var b = 9; b < 15; b++) setFn(14 - b, 8, bit(fb, b));
+      for(var c = 0; c < 8; c++) setFn(size - 1 - c, 8, bit(fb, c));
+      for(var e = 8; e < 15; e++) setFn(8, size - 15 + e, bit(fb, e));
+      setFn(8, size - 8, true);
+    }
+
+    // Motifs de fonction
+    for(var i = 0; i < size; i++){ setFn(6, i, i % 2 === 0); setFn(i, 6, i % 2 === 0); }
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+    var ap = ALIGN[ver], n = ap.length;
+    for(var ai = 0; ai < n; ai++) for(var aj = 0; aj < n; aj++){
+      if((ai === 0 && aj === 0) || (ai === 0 && aj === n - 1) || (ai === n - 1 && aj === 0)) continue;
+      alignment(ap[ai], ap[aj]);
+    }
+    drawFormat(0);
+    if(ver >= 7){
+      var rem = ver;
+      for(var r = 0; r < 12; r++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+      var vb = (ver << 12) | rem;
+      for(var q = 0; q < 18; q++){
+        var col = bit(vb, q), a = size - 11 + (q % 3), b = Math.floor(q / 3);
+        setFn(a, b, col); setFn(b, a, col);
+      }
+    }
+
+    // Placement des données en zigzag
+    var idx = 0, total = enc.data.length * 8;
+    for(var right = size - 1; right >= 1; right -= 2){
+      if(right === 6) right = 5;
+      for(var vert = 0; vert < size; vert++){
+        for(var j = 0; j < 2; j++){
+          var x = right - j;
+          var upward = ((right + 1) & 2) === 0;
+          var yy = upward ? size - 1 - vert : vert;
+          if(!isFn[yy][x]){
+            modules[yy][x] = idx < total ? bit(enc.data[idx >>> 3], 7 - (idx & 7)) : false;
+            idx++;
+          }
+        }
+      }
+    }
+
+    // Masques
+    function maskCond(m, x, y){
+      switch(m){
+        case 0: return (x + y) % 2 === 0;
+        case 1: return y % 2 === 0;
+        case 2: return x % 3 === 0;
+        case 3: return (x + y) % 3 === 0;
+        case 4: return (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0;
+        case 5: return x * y % 2 + x * y % 3 === 0;
+        case 6: return (x * y % 2 + x * y % 3) % 2 === 0;
+        default: return ((x + y) % 2 + x * y % 3) % 2 === 0;
+      }
+    }
+    function applyMask(m){
+      for(var y = 0; y < size; y++) for(var x = 0; x < size; x++)
+        if(!isFn[y][x] && maskCond(m, x, y)) modules[y][x] = !modules[y][x];
+    }
+    function penalty(){
+      var score = 0, y, x, run, k;
+      for(var pass = 0; pass < 2; pass++){
+        for(var a = 0; a < size; a++){
+          run = 1;
+          var hist = [];
+          for(var b = 1; b <= size; b++){
+            var cur = b < size ? (pass === 0 ? modules[a][b] : modules[b][a]) : null;
+            var prev = pass === 0 ? modules[a][b - 1] : modules[b - 1][a];
+            if(b < size && cur === prev){ run++; }
+            else { if(run >= 5) score += 3 + (run - 5); hist.push(run); run = 1; }
+          }
+          // motif de type repère 1:1:3:1:1 (approximation à partir des séquences brutes)
+          var line = [];
+          for(var t = 0; t < size; t++) line.push((pass === 0 ? modules[a][t] : modules[t][a]) ? 1 : 0);
+          var s = line.join('');
+          var m1 = s.split('10111010000').length - 1, m2 = s.split('00001011101').length - 1;
+          score += 40 * (m1 + m2);
+        }
+      }
+      for(y = 0; y < size - 1; y++) for(x = 0; x < size - 1; x++){
+        var c = modules[y][x];
+        if(c === modules[y][x + 1] && c === modules[y + 1][x] && c === modules[y + 1][x + 1]) score += 3;
+      }
+      var dark = 0;
+      for(y = 0; y < size; y++) for(x = 0; x < size; x++) if(modules[y][x]) dark++;
+      k = Math.ceil(Math.abs(dark * 20 - size * size * 10) / (size * size)) - 1;
+      score += Math.max(0, k) * 10;
+      return score;
+    }
+
+    var bestMask = 0, bestScore = Infinity;
+    for(var m = 0; m < 8; m++){
+      applyMask(m); drawFormat(m);
+      var sc = penalty();
+      if(sc < bestScore){ bestScore = sc; bestMask = m; }
+      applyMask(m); // annule
+    }
+    applyMask(bestMask); drawFormat(bestMask);
+    return modules;
+  }
+
+  // Convertit la matrice en SVG (fond blanc + zone de silence de 4 modules)
+  function toSvg(text){
+    var mods = build(text), n = mods.length, q = 4, d = '';
+    for(var y = 0; y < n; y++){
+      var x = 0;
+      while(x < n){
+        if(mods[y][x]){
+          var start = x;
+          while(x < n && mods[y][x]) x++;
+          d += 'M' + (start + q) + ',' + (y + q) + 'h' + (x - start) + 'v1h-' + (x - start) + 'z';
+        } else x++;
+      }
+    }
+    var full = n + 2 * q;
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + full + ' ' + full + '" shape-rendering="crispEdges">' +
+      '<rect width="' + full + '" height="' + full + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+  }
+
+  return { matrix: build, toSvg: toSvg };
+})();
+
 /* ================== CONFIG ================== */
 const USE_CODE = false;   // false = prénom + nom seulement (test) ; true = code personnel à 4 chiffres (doit correspondre à REQUIRE_CODE dans Code.gs)
 const API_URL = 'https://script.google.com/macros/s/AKfycbxfWBIB7xN2hnprTg2UG51bvCLm7DFCvtleVbXVEi2yTNyTENRjsF5YsnsZbqHgoaDlsw/exec';      // URL de l'application web Google Apps Script (vide = mode démo)
@@ -183,6 +503,7 @@ function toast(m, bad){ const t = $('#toast'); t.textContent = m; t.className = 
 const mem = {};
 function lsGet(k){ try { return localStorage.getItem(k); } catch (e) { return mem[k] || null; } }
 function lsSet(k, v){ try { localStorage.setItem(k, v); } catch (e) { mem[k] = v; } }
+function lsDel(k){ try { localStorage.removeItem(k); } catch (e) { delete mem[k]; } }
 function ssGet(k){ try { return sessionStorage.getItem(k); } catch (e) { return mem['s' + k] || null; } }
 function ssSet(k, v){ try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) { mem['s' + k] = v; } }
 
@@ -206,7 +527,7 @@ function defaultState(){
     .map(g => ({ name: '', group: g, fixed: true, blocked: false }));
   const mk = n => Array.from({ length: n }, () => ({ name: '', group: '', fixed: false, blocked: false }));
   const cho1 = mk(7), cho2 = mk(9); // 16 choristes sur 2 arcs
-  return { title: 'KLÉ LA MASS', subtitle: 'PLAN DE SCÈNE', presenceOpen: false, session: '', present: {}, groups: G,
+  return { title: 'KLÉ LA MASS', subtitle: 'PLAN DE SCÈNE', groups: G,
     arcs: [{ id: uid(), groupId: '', kind: 'choeur', seats: cho1 }, { id: uid(), groupId: '', kind: 'choeur', seats: cho2 }, { id: uid(), groupId: '', kind: 'musicien', seats: mus }] };
 }
 
@@ -233,14 +554,6 @@ function logicRelease(st, d){
   return { ok: true, state: st };
 }
 
-function logicPresent(st, d){
-  if (!st) return { ok: false, error: "Le plan n'est pas encore configuré." };
-  if (!st.presenceOpen) return { ok: false, error: "Le pointage n'est pas ouvert pour le moment." };
-  st.present = st.present || {}; const k = key(d.name);
-  if (!st.present[k]) st.present[k] = { name: d.name, at: new Date().toISOString() };
-  return { ok: true, state: st };
-}
-
 if (!USE_CODE) document.querySelectorAll('.codeonly').forEach(e => e.style.display = 'none');
 /* ================== API (réelle ou démo) ================== */
 function demo(action, d){
@@ -255,12 +568,13 @@ function demo(action, d){
     if (fix(d.code) !== e.code) return { error: 'Code incorrect.' }; return { name: e.name }; };
   const needPw = () => d.password === 'demo';
   switch (action) {
-    case 'get': { let st = S(); if (!st) { st = defaultState(); saveS(st); } return { ok: true, state: st }; }
+    case 'get': { let st = S(); if (!st) { st = defaultState(); saveS(st); } return { ok: true, state: st, live: null }; }
     case 'checkAccess': { const a = auth(); return a.error ? { ok: true, allowed: false, error: a.error } : { ok: true, allowed: true, name: a.name }; }
     case 'checkOrga': return { ok: needPw() };
     case 'reserve': { const a = auth(); if (a.error) return { ok: false, error: a.error }; const st = S(); const r = logicReserve(st, Object.assign({}, d, { name: a.name })); if (r.ok) saveS(st); return r; }
     case 'release': { const a = auth(); if (a.error) return { ok: false, error: a.error }; const st = S(); const r = logicRelease(st, Object.assign({}, d, { name: a.name })); if (r.ok) saveS(st); return r; }
-    case 'present': { const a = auth(); if (a.error) return { ok: false, error: a.error }; const st = S(); const r = logicPresent(st, Object.assign({}, d, { name: a.name })); if (r.ok) saveS(st); return r; }
+    case 'checkin': case 'getMyCount': case 'openSession': case 'closeSession': case 'deleteSession': case 'getSessionToken': case 'getRepStats': case 'getSessionDetail': case 'addPresence': case 'removePresence': case 'resetRepetitions':
+      return { ok: false, error: 'Le pointage des répétitions demande le mode réel (renseigner API_URL).' };
     case 'save': if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; saveS(d.state); return { ok: true, state: d.state };
     case 'roster': return needPw() ? { ok: true, roster: R() } : { ok: false, error: 'Mot de passe incorrect.' };
     case 'addRoster': { if (!needPw()) return { ok: false, error: 'Mot de passe incorrect.' }; const r = R(); const have = new Set(r.map(e => key(e.name))); (d.items || []).forEach(it => { const n = String(typeof it === 'string' ? it : it.name || '').trim(); if (!n || have.has(key(n))) return; have.add(key(n)); let c = fix(typeof it === 'string' ? '' : it.code); if (!c || r.some(e => e.code === c)) c = newCode(r); r.push({ name: n, code: c }); }); saveR(r); return { ok: true, roster: r }; }
@@ -281,11 +595,11 @@ async function api(action, data){
 
 /* ================== ÉTAT GLOBAL ================== */
 let moving = false, dragEnd = 0, drag = null;
-let serverHasState = true, state = null, roster = [], photos = {}, me = ssGet('scene_me'), myCode = ssGet('scene_code'), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
+let serverHasState = true, state = null, roster = [], photos = {}, me = lsGet('scene_me'), myCode = lsGet('scene_code'), live = null, liveSet = new Set(), orgaPw = ssGet('scene_pw'), sel = null, full = false, zoom = 100;
 const isOrga = () => !!orgaPw;
 const groupOf = (arc, seat) => state.groups.find(g => g.id === (arc.groupId || seat.group)) || null;
 const photoOf = name => photos[key(name)] || null;
-const isPresent = name => !!(state && state.present && state.present[key(name)]);
+const isPresent = name => liveSet.has(key(name));
 
 /* ================== ICÔNES D'INSTRUMENTS ================== */
 // Dessinées dans une boîte de -20 à 20 ; c = couleur de remplissage.
@@ -395,11 +709,9 @@ function renderLegend(){
     if (seat.name) { taken++; const g = groupOf(arc, seat); if (g) counts[g.id] = (counts[g.id] || 0) + 1; }
   }));
   $('#total').textContent = `${taken} / ${total} réservées`;
-  const np = Object.keys(state.present || {}).length;
-  $('#presInfo').innerHTML = `✅ ${np} présent${np > 1 ? 's' : ''}${state.session ? ' · ' + esc(state.session) : ''} <span class="small">(pointage ${state.presenceOpen ? 'ouvert' : 'fermé'})</span>`;
-  const bp = $('#btnPresent'); bp.style.display = me ? '' : 'none';
-  bp.textContent = me && isPresent(me) ? '✅ Présence enregistrée' : '✋ Je suis présent';
-  bp.style.opacity = me && isPresent(me) ? .7 : 1;
+  let pi = live ? `<div class="live">🟢 Répétition en cours${live.label ? ' · ' + esc(live.label) : ''} — ${live.present.length} présent${live.present.length > 1 ? 's' : ''}</div>` : '<div class="small">Aucune répétition en cours</div>';
+  if (me && !isOrga() && myRep && myRep.total) pi += `<div class="mine">${esc(repPhrase(myRep.count, myRep.total))}</div>`;
+  $('#presInfo').innerHTML = pi;
   $('#legend').innerHTML = state.groups.map(g => `<div class="leg">${iconBadge(g, 24)}${esc(g.name)} <span class="small">${esc(g.sigle)}</span><span class="n">${counts[g.id] || 0}</span></div>`).join('');
   $('#who').textContent = me ? 'Connecté : ' + me : (isOrga() ? '' : 'Non connecté');
   $('#btnLogin').textContent = me ? '👤 ' + me : '👤 Je me connecte';
@@ -426,7 +738,7 @@ function renderPop(){
     if (!arc.groupId) h += `<select id="pg"><option value="">— au choix du participant —</option>${state.groups.map(x => `<option value="${esc(x.id)}"${x.id === seat.group ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
     h += `</div><button class="btn" data-act="osave">Enregistrer</button>`;
     h += `<button class="btn alt" style="color:#444;background:#eee" data-act="oblock">${seat.blocked ? '🔓 Débloquer' : '🔒 Bloquer'}</button>`;
-    if (taken) h += `<button class="btn alt" style="color:#444;background:#eee" data-act="opres">${isPresent(seat.name) ? '❌ Marquer absent' : '✅ Marquer présent'}</button><button class="btn pink" data-act="oclear">Vider la place</button>`;
+    if (taken) h += `<div class="rep" data-rep-name="1">${esc(repLineFor(seat.name, false))}</div>` + (live ? `<button class="btn alt" style="color:#444;background:#eee" data-act="opres">${isPresent(seat.name) ? '❌ Marquer absent' : '✅ Marquer présent'}</button>` : '') + `<button class="btn pink" data-act="oclear">Vider la place</button>`;
     h += `<button class="btn alt" style="color:#444;background:#eee" data-act="simple">← Vue simple</button>`;
   } else {
     if (seat.blocked && !taken) h += '<div>🔒 Place réservée par l\'organisateur.</div>';
@@ -434,7 +746,8 @@ function renderPop(){
       const ph = photoOf(seat.name); if (ph) h += `<img src="${esc(ph)}" alt="">`;
       h += `<div class="nm">${esc(seat.name)}</div>${chip}`;
       if (isPresent(seat.name)) h += '<div style="margin-top:6px;color:#00875f;font-weight:800">✅ Présent</div>';
-      if (mine && !isPresent(seat.name)) h += '<button class="btn" data-act="present">✋ Je suis présent</button>';
+      else if (mine && live) h += '<div style="margin-top:6px;font-size:12px;color:#555">📷 Scanne le QR affiché à l\'écran pour pointer.</div>';
+      h += `<div class="rep" data-rep-name="1">${esc(repLineFor(seat.name, mine))}</div>`;
       if (mine) h += '<button class="btn pink" data-act="release">Libérer ma place</button>';
     } else {
       if (g) h += `${chip}`;
@@ -558,26 +871,24 @@ pop.addEventListener('click', async e => {
     if (pg && !grp) return toast('Choisis ton instrument ou ta voix', true);
     return result(await api('reserve', { name: me, code: myCode, arcId: sel.arcId, index: sel.k, group: grp }), 'Place réservée ✔');
   }
-  if (act === 'present') return doPresent();
   if (act === 'release') return result(await api('release', { name: me, code: myCode, arcId: sel.arcId, index: sel.k }), 'Place libérée');
   const id = sel.arcId, k = sel.k;
   if (act === 'osave') { const name = $('#pn').value.trim(), pg = $('#pg'), pf = $('#pf'); return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.name = name; if (pg) { s.group = pg.value; s.fixed = !!pg.value; } }); }
-  if (act === 'opres') { const nm = f.seat.name; return orgaEdit(st => { st.present = st.present || {}; const k = key(nm); if (st.present[k]) delete st.present[k]; else st.present[k] = { name: nm, at: new Date().toISOString() }; }); }
+  if (act === 'opres') {
+    if (!live) return toast("Aucune répétition ouverte", true);
+    const nm = f.seat.name, r = await api(isPresent(nm) ? 'removePresence' : 'addPresence', { session: live.id, name: nm, password: orgaPw });
+    if (!r.ok) return toast(r.error || 'Erreur', true);
+    await syncState(); refreshRepStats(); return renderPop();
+  }
   if (act === 'oblock') return orgaEdit(st => { const s = st.arcs.find(a => a.id === id).seats[k]; s.blocked = !s.blocked; });
   if (act === 'oclear') return orgaEdit(st => { const a = st.arcs.find(x => x.id === id), s = a.seats[k]; s.name = ''; if (!a.groupId && !s.fixed) s.group = ''; });
 });
-async function doPresent(){
-  if (!me) return openLogin();
-  if (isPresent(me)) return toast('Ta présence est déjà enregistrée ✔');
-  result(await api('present', { name: me, code: myCode }), 'Présence enregistrée ✔');
-}
-$('#btnPresent').onclick = doPresent;
 function result(r, okMsg){
   if (r.ok) { if (r.state) state = r.state; toast(okMsg); render(); }
   else toast(r.error || 'Erreur', true);
 }
 async function orgaEdit(fn){
-  const fresh = await api('get'); if (fresh.ok && fresh.state) state = fresh.state;
+  const fresh = await api('get'); if (fresh.ok && fresh.state) { state = fresh.state; applyLive(fresh.live); }
   ensureChef(state);
   const copy = clone(state); fn(copy);
   const r = await api('save', { password: orgaPw, state: copy });
@@ -612,18 +923,18 @@ async function orgaLogin(){
 $('#ogo').onclick = orgaLogin;
 $('#opw').addEventListener('keydown', e => { if (e.key === 'Enter') orgaLogin(); });
 $('#lc').addEventListener('keydown', e => { if (e.key === 'Enter') $('#lgo').click(); });
-$('#btnLogin').onclick = () => { if (me) { if (confirm('Te déconnecter ?')) { me = null; myCode = null; ssSet('scene_me', null); ssSet('scene_code', null); render(); } } else openLogin(); };
+$('#btnLogin').onclick = () => { if (me) { if (confirm('Te déconnecter ?')) { me = null; myCode = null; myRep = null; lsDel('scene_me'); lsDel('scene_code'); render(); } } else openLogin(); };
 $('#lskip').onclick = () => $('#loginOv').style.display = 'none';
 $('#lgo').onclick = async () => {
   const name = ($('#lp').value.trim() + ' ' + $('#ln').value.trim()).trim();
   const code = $('#lc').value.trim();
   if (!$('#lp').value.trim() || !$('#ln').value.trim()) { $('#lerr').textContent = 'Prénom et nom, s\'il te plaît.'; return; }
   const r = await api('checkAccess', { name, code });
-  if (r.ok && r.allowed) { me = r.name || name; myCode = code; ssSet('scene_me', me); ssSet('scene_code', code); $('#lc').value = ''; $('#loginOv').style.display = 'none'; render(); toast('Bienvenue ' + me); }
+  if (r.ok && r.allowed) { me = r.name || name; myCode = code; lsSet('scene_me', me); lsSet('scene_code', code); $('#lc').value = ''; $('#loginOv').style.display = 'none'; render(); refreshMyCount(); if (pendingCheckin) runCheckin(me, myCode); else toast('Bienvenue ' + me); }
   else $('#lerr').textContent = r.error || 'Nom ou code incorrect. Vérifie, ou préviens un organisateur.';
 };
 $('#btnOrga').onclick = async () => {
-  if (isOrga()) { if (moving) setMoving(false); orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; sel = null; pop.style.display = 'none'; render(); if (!me) openLogin(); return; }
+  if (isOrga()) { if (moving) setMoving(false); leaveOrganizer(); orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; sel = null; pop.style.display = 'none'; render(); if (!me) openLogin(); return; }
   const pw = (prompt('Mot de passe organisateur') || '').trim(); if (!pw) return;
   const r = await api('checkOrga', { password: pw });
   if (r.ok) { orgaPw = pw; ssSet('scene_pw', pw); await enterOrga(); toast('Mode organisateur'); }
@@ -632,7 +943,7 @@ $('#btnOrga').onclick = async () => {
 async function enterOrga(){
   $('#admin').style.display = 'block';
   const r = await api('roster', { password: orgaPw }); roster = (r.ok && r.roster) || [];
-  renderAdmin(); render();
+  renderAdmin(); render(); onOrganizerReady();
   if (!serverHasState) { serverHasState = true; await orgaEdit(() => {}); }
   else { const f = await api('get'); if (f.ok && f.state && !f.state.arcs.some(a => a.special === 'chef')) await orgaEdit(() => {}); }
 }
@@ -641,7 +952,6 @@ async function enterOrga(){
 function renderAdmin(){
   if (!isOrga() || !state) return;
   $('#tTitle').value = state.title || ''; $('#tSub').value = state.subtitle || '';
-  $('#sessLbl').value = state.session || ''; $('#presToggle').textContent = state.presenceOpen ? '🔴 Fermer le pointage' : '🟢 Ouvrir le pointage';
   const kinds = [['', 'Tous'], ['musicien', 'Musiciens'], ['choeur', 'Chœur']];
   $('#arcsEd').innerHTML = state.arcs.filter(a => !a.special).map((a, i) => `<div class="row" data-arc="${a.id}"><b>${i + 1}</b>
     <input type="number" min="1" max="60" value="${a.seats.length}" data-f="n" title="Nombre de places">
@@ -688,13 +998,11 @@ $('#grpEd').addEventListener('click', e => {
 $('#addGrp').onclick = () => orgaEdit(st => st.groups.push({ id: uid(), name: 'Nouveau', sigle: 'NV', color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0'), kind: '' }));
 $('#tOk').onclick = () => orgaEdit(st => { st.title = $('#tTitle').value; st.subtitle = $('#tSub').value; });
 $('#saveInit').onclick = () => orgaEdit(() => {});
-$('#resetPlan').onclick = () => { if (confirm('Remettre toute la disposition par défaut (2 arcs de chœurs près du chef, musiciens derrière) ? Les réservations et présences seront effacées.')) orgaEdit(st => { const d = defaultState(); Object.keys(st).forEach(k => delete st[k]); Object.assign(st, d); sel = null; }); };
+$('#resetPlan').onclick = () => { if (confirm('Remettre toute la disposition par défaut (2 arcs de chœurs près du chef, musiciens derrière) ? Les réservations seront effacées.')) orgaEdit(st => { const d = defaultState(); Object.keys(st).forEach(k => delete st[k]); Object.assign(st, d); sel = null; }); };
 $('#resetAll').onclick = () => { if (confirm('Vider TOUTES les places (noms, blocages) ?')) orgaEdit(st => st.arcs.forEach(a => a.seats.forEach(s => { s.name = ''; s.blocked = false; if (!s.fixed) s.group = ''; }))); };
 $('#csv').onclick = () => {
-  const rows = [['Arc', 'Place', 'Groupe', 'Nom', 'Présent']];
-  state.arcs.forEach((a, i) => a.seats.forEach((s, k) => { const g = groupOf(a, s); rows.push([i + 1, k + 1, g ? g.name : '', s.name || (s.blocked ? '(bloquée)' : ''), s.name ? (isPresent(s.name) ? 'oui' : 'non') : '']); }));
-  const seated = new Set(); state.arcs.forEach(a => a.seats.forEach(s => { if (s.name) seated.add(key(s.name)); }));
-  Object.keys(state.present || {}).forEach(k => { if (!seated.has(k)) rows.push(['', '', '', state.present[k].name, 'oui (sans place)']); });
+  const rows = [['Arc', 'Place', 'Groupe', 'Nom', 'Présent (répétition en cours)', 'Répétitions']];
+  state.arcs.forEach((a, i) => a.seats.forEach((s, k) => { const g = groupOf(a, s); rows.push([i + 1, k + 1, g ? g.name : '', s.name || (s.blocked ? '(bloquée)' : ''), s.name ? (live ? (isPresent(s.name) ? 'oui' : 'non') : '') : '', s.name && repStats ? (repStats.counts[key(s.name)] || 0) : '']); }));
   const csv = '\ufeff' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'plan_scene.csv'; a.click();
 };
@@ -721,18 +1029,273 @@ $('#rosterList').addEventListener('click', async e => {
     const oldE = roster.find(e => e.name === old);
     r = await api('addRoster', { password: orgaPw, items: [{ name: nn, code: oldE ? oldE.code : '' }] }); if (!r.ok) return toast(r.error, true);
     roster = r.roster; renderRoster();
-    return orgaEdit(st => { // le nouveau nom suit la place et la présence
+    return orgaEdit(st => { // le nouveau nom suit la place
       st.arcs.forEach(a => a.seats.forEach(s => { if (s.name && key(s.name) === key(old)) s.name = nn; }));
-      st.present = st.present || {}; const k = key(old); if (st.present[k]) { st.present[key(nn)] = Object.assign({}, st.present[k], { name: nn }); delete st.present[k]; }
     });
   }
   if (!confirm('Retirer ' + old + ' de la liste ?')) return;
   const r = await api('removeRoster', { password: orgaPw, name: old });
   if (r.ok) { roster = r.roster; renderRoster(); } else toast(r.error, true);
 });
-$('#sessOk').onclick = () => orgaEdit(st => { st.session = $('#sessLbl').value.trim(); });
-$('#presToggle').onclick = () => orgaEdit(st => { st.presenceOpen = !st.presenceOpen; });
-$('#presReset').onclick = () => { if (confirm('Vider toutes les présences pour une nouvelle séance ?')) orgaEdit(st => { st.present = {}; st.presenceOpen = true; }); };
+
+/* ================== RÉPÉTITIONS : pointage par QR tournant, compteurs ================== */
+const REP_POLL_MS = 8000;        // rafraîchissement du QR / des présents côté organisateur
+const REP_TOKEN_STEP = 30;       // doit correspondre à TOKEN_STEP_SEC dans Code.gs
+let pendingCheckin = null;   // { session, token } issu d'un QR scanné, pas encore validé
+let myRep = null;            // { count, total } : compteur du participant connecté (le sien uniquement)
+let repStats = null;         // { total, sessions, counts } : vue organisateur
+let repLive = null;          // répétition ouverte suivie par l'organisateur { id, date, label, count }
+let repPollTimer = null, repPollTick = 0, repDetailId = null, qrOverlayOpen = false, lastQrToken = '', wakeLockHandle = null;
+
+const plural = (n, word) => n + ' ' + word + (n > 1 ? 's' : '');
+const repPhrase = (count, total) => total ? '🥁 ' + plural(count, 'répétition') + ' sur ' + total : '';
+function formatRepDate(iso){
+  const p = String(iso || '').split('-'); if (p.length !== 3) return String(iso || '');
+  const d = new Date(+p[0], +p[1] - 1, +p[2]); if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function localTodayISO(){ const d = new Date(), z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); }
+
+// ---- état "en direct" renvoyé par get : répétition ouverte + noms des présents ----
+function applyLive(l){ live = l || null; liveSet = new Set(live ? (live.present || []).map(key) : []); }
+// Relit le plan + la répétition ouverte ; redessine seulement si quelque chose a changé.
+async function syncState(){
+  const x = await api('get'); if (!x.ok || !x.state) return;
+  const changed = JSON.stringify(x.state) !== JSON.stringify(state) || JSON.stringify(x.live || null) !== JSON.stringify(live);
+  if (!changed) return;
+  state = x.state; applyLive(x.live); render(); if (isOrga()) renderAdmin();
+}
+
+// ---- compteur du participant connecté ----
+async function refreshMyCount(){
+  if (!me || isOrga()) return;
+  try {
+    const res = await api('getMyCount', { name: me, code: myCode });
+    if (res.ok) { myRep = { count: res.count, total: res.total }; renderLegend(); refreshPopupRep(); }
+  } catch (e) {}
+}
+// ---- compteurs dans les bulles : organisateur = toutes les places nommées ; participant = SA place seulement ----
+function repLineFor(name, mine){
+  if (isOrga()) return repStats ? repPhrase(repStats.counts[key(name)] || 0, repStats.total) : '';
+  if (mine && myRep) return repPhrase(myRep.count, myRep.total);
+  return '';
+}
+function refreshPopupRep(){
+  const el = pop.querySelector('.rep[data-rep-name]'); if (!el || !sel) return;
+  const f = findSeat(); if (!f || !f.seat.name) return;
+  el.textContent = repLineFor(f.seat.name, me && key(f.seat.name) === key(me));
+}
+
+// ---- arrivée par un QR de répétition (participant) ----
+function clearPendingCheckin(){ pendingCheckin = null; $('#lbanner').style.display = 'none'; }
+function showCheck(stateName, data){
+  const ov = $('#chk-ov'), icon = $('#chk-icon'), title = $('#chk-title'), text = $('#chk-text'), pr = $('#chk-primary'), sec = $('#chk-secondary');
+  sec.style.display = 'none'; pr.style.display = ''; ov.style.display = 'flex';
+  const close = () => { ov.style.display = 'none'; };
+  if (stateName === 'loading') { icon.textContent = '⏳'; title.textContent = 'Pointage en cours…'; text.textContent = ''; pr.style.display = 'none'; }
+  else if (stateName === 'ok') {
+    const s = data.session || {};
+    icon.textContent = '✅'; title.textContent = data.already ? 'Déjà pointé(e)' : 'Présence enregistrée';
+    text.textContent = data.name + '\nRépétition du ' + formatRepDate(s.date) + (s.label ? ' — ' + s.label : '') + '\nTu comptes ' + plural(data.count, 'répétition') + ' sur ' + data.total + '.';
+    pr.textContent = 'Voir le plan'; pr.onclick = close;
+  } else {
+    icon.textContent = '⚠️'; title.textContent = 'Pointage impossible'; text.textContent = data.message;
+    pr.textContent = 'Fermer'; pr.onclick = close;
+    if (data.retry) { sec.style.display = ''; sec.textContent = 'Réessayer'; sec.onclick = data.retry; }
+  }
+}
+async function runCheckin(name, code){
+  if (!pendingCheckin) return;
+  const p = pendingCheckin;
+  showCheck('loading');
+  try {
+    const res = await api('checkin', { name, code, session: p.session, token: p.token });
+    if (res.ok) {
+      clearPendingCheckin(); myRep = { count: res.count, total: res.total };
+      showCheck('ok', res); syncState(); renderLegend();
+    } else if (res.code === 'BAD_ACCESS') {
+      // identifiants mémorisés devenus invalides : on les oublie et on redemande une saisie
+      me = null; myCode = null; lsDel('scene_me'); lsDel('scene_code'); myRep = null;
+      $('#chk-ov').style.display = 'none'; render(); openLogin();
+      $('#lerr').textContent = 'Nom non reconnu : saisis-le à nouveau pour valider ta présence.';
+    } else {
+      clearPendingCheckin(); showCheck('error', { message: res.error || 'Erreur, réessaie.' });
+    }
+  } catch (e) { showCheck('error', { message: 'Erreur réseau.', retry: () => runCheckin(name, code) }); }
+}
+function initFromUrl(){
+  let rep = null, tok = null;
+  try { const q = new URLSearchParams(location.search); rep = q.get('rep'); tok = q.get('t'); } catch (e) {}
+  if (rep && tok && /^\d+$/.test(rep) && /^[0-9a-fA-F]{6,64}$/.test(tok)) {
+    pendingCheckin = { session: Number(rep), token: tok };
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}   // un rafraîchissement ne repointe pas
+    const b = $('#lbanner'); b.textContent = '📷 Pointage de répétition : connecte-toi pour valider ta présence.'; b.style.display = 'block';
+    if (me) runCheckin(me, myCode);
+  }
+}
+
+// ---- organisateur : suivi en direct de la répétition ouverte ----
+function onOrganizerReady(){ $('#rep-date-input').value = localTodayISO(); refreshRepStats(); }
+function leaveOrganizer(){
+  clearTimeout(repPollTimer); repPollTimer = null; repLive = null; repStats = null; lastQrToken = ''; repDetailId = null;
+  closeQrOverlay(); $('#rep-live').style.display = 'none'; $('#rep-open-form').style.display = ''; $('#rep-detail').style.display = 'none';
+}
+async function refreshRepStats(){
+  if (!isOrga()) return;
+  try {
+    const res = await api('getRepStats', { password: orgaPw });
+    if (res.ok) { repStats = { total: res.total, sessions: res.sessions || [], counts: res.counts || {} }; renderRepPanel(); }
+  } catch (e) {}
+}
+function renderRepPanel(){
+  if (!repStats) return;
+  const open = repStats.sessions.find(s => s.open);
+  if (open && (!repLive || repLive.id !== open.id)) startRepLive(open, null);
+  else if (!open && repLive) stopRepLive();
+  renderRepSessions(); renderRepCounts(); refreshPopupRep();
+}
+function renderRepSessions(){
+  const box = $('#rep-sessions-list');
+  if (!repStats.sessions.length) { box.innerHTML = '<p class="rep-empty">Aucune répétition pour l\'instant.</p>'; return; }
+  box.innerHTML = repStats.sessions.map(s => `<div class="rep-item${s.open ? ' open' : ''}">
+    <button class="rep-item-main" data-rep-detail="${s.id}"><span class="rep-item-date">${esc(formatRepDate(s.date))}</span><span class="rep-item-label">${esc(s.label || 'Sans libellé')}${s.open ? ' <em>· EN COURS</em>' : ''}</span></button>
+    <span class="rep-item-count" title="présents">${s.count}</span></div>`).join('');
+}
+$('#rep-sessions-list').addEventListener('click', e => { const b = e.target.closest('[data-rep-detail]'); if (b) toggleRepDetail(Number(b.dataset.repDetail)); });
+function renderRepCounts(){
+  if (!repStats) return;
+  $('#rep-counts-total').textContent = '· sur ' + plural(repStats.total, 'répétition');
+  const q = norm($('#rep-search-input').value), sort = $('#rep-sort-select').value;
+  const rows = roster.map(e => e.name).map(name => ({ name, n: repStats.counts[key(name)] || 0 })).filter(r => !q || norm(r.name).includes(q));
+  rows.sort((a, b) => (sort === 'asc' && a.n !== b.n) ? a.n - b.n : (sort === 'desc' && a.n !== b.n) ? b.n - a.n : a.name.localeCompare(b.name, 'fr'));
+  $('#rep-counts-list').innerHTML = rows.length ? rows.map(r => `<div class="rep-count-row"><span>${esc(r.name)}</span><b>${r.n}</b></div>`).join('') : '<p class="rep-empty">Aucun participant.</p>';
+}
+$('#rep-search-input').addEventListener('input', renderRepCounts);
+$('#rep-sort-select').addEventListener('change', renderRepCounts);
+
+function updateRepLiveUi(expiresIn){
+  if (!repLive) return;
+  $('#rep-live-title').textContent = formatRepDate(repLive.date) + (repLive.label ? ' · ' + repLive.label : '');
+  $('#rep-live-count').textContent = repLive.count || 0;
+  $('#qr-title').textContent = 'Répétition du ' + formatRepDate(repLive.date) + (repLive.label ? ' — ' + repLive.label : '');
+  $('#qr-count').textContent = repLive.count || 0;
+  if (typeof expiresIn === 'number') {
+    const bar = $('#qr-timer-bar');
+    bar.style.transition = 'none'; bar.style.width = Math.max(0, Math.min(100, expiresIn / REP_TOKEN_STEP * 100)) + '%';
+    void bar.offsetWidth; bar.style.transition = 'width ' + expiresIn + 's linear'; bar.style.width = '0%';
+  }
+}
+function startRepLive(session, first){
+  repLive = { id: session.id, date: session.date, label: session.label || '', count: session.count || 0 };
+  lastQrToken = (first && first.token) ? first.token : ''; repPollTick = 0;
+  $('#rep-open-form').style.display = 'none'; $('#rep-live').style.display = 'block';
+  updateRepLiveUi(first ? first.expiresIn : undefined);
+  scheduleRepPoll(first ? REP_POLL_MS : 0);
+}
+function stopRepLive(){
+  clearTimeout(repPollTimer); repPollTimer = null; repLive = null; lastQrToken = ''; closeQrOverlay();
+  $('#rep-live').style.display = 'none'; $('#rep-open-form').style.display = '';
+}
+function scheduleRepPoll(ms){ clearTimeout(repPollTimer); if (repLive) repPollTimer = setTimeout(pollRepLive, ms); }
+async function pollRepLive(){
+  if (!isOrga() || !repLive) return;
+  const id = repLive.id;
+  try {
+    const res = await api('getSessionToken', { session: id, password: orgaPw });
+    if (!repLive || repLive.id !== id) return;
+    if (!res.ok || res.open === false) { stopRepLive(); toast(res.ok ? 'Cette répétition est terminée.' : (res.error || 'Répétition introuvable.')); refreshRepStats(); syncState(); return; }
+    repLive.count = res.count;
+    if (res.token !== lastQrToken) { lastQrToken = res.token; if (qrOverlayOpen) renderQr(); }
+    updateRepLiveUi(res.expiresIn);
+    if (++repPollTick % 4 === 0) { refreshRepStats(); syncState(); }
+  } catch (e) {}
+  scheduleRepPoll(REP_POLL_MS);
+}
+$('#rep-open-btn').onclick = async () => {
+  const btn = $('#rep-open-btn'), label = $('#rep-label-input').value.trim(), date = $('#rep-date-input').value || localTodayISO();
+  btn.disabled = true;
+  try {
+    const res = await api('openSession', { date, label, password: orgaPw });
+    if (res.ok) { $('#rep-label-input').value = ''; startRepLive(res.session, res); openQrOverlay(); refreshRepStats(); syncState(); }
+    else toast(res.error || "Impossible d'ouvrir la répétition.", true);
+  } catch (e) { toast('Erreur réseau, réessaie.', true); }
+  btn.disabled = false;
+};
+$('#rep-close-btn').onclick = async () => {
+  if (!repLive) return;
+  if (!confirm('Clôturer cette répétition ? Plus personne ne pourra pointer avec le QR.')) return;
+  try {
+    const res = await api('closeSession', { session: repLive.id, password: orgaPw });
+    if (res.ok) { stopRepLive(); toast('Répétition clôturée.'); refreshRepStats(); syncState(); } else toast(res.error || 'Erreur, réessaie.', true);
+  } catch (e) { toast('Erreur réseau, réessaie.', true); }
+};
+$('#rep-reset-btn').onclick = async () => {
+  const n = repStats ? repStats.total : 0;
+  if (!confirm(`Remettre à zéro TOUTES les répétitions ? ${plural(n, 'répétition')} et toutes les présences seront supprimées, et les compteurs de tous les participants repartiront à 0. C'est irréversible.`)) return;
+  if (!confirm('Dernière confirmation : supprimer définitivement toutes les répétitions et toutes les présences ?')) return;
+  try {
+    const res = await api('resetRepetitions', { password: orgaPw });
+    if (res.ok) { stopRepLive(); repDetailId = null; $('#rep-detail').style.display = 'none'; await refreshRepStats(); syncState(); toast('Répétitions remises à zéro.'); }
+    else toast(res.error || 'Erreur, réessaie.', true);
+  } catch (e) { toast('Erreur réseau, réessaie.', true); }
+};
+$('#rep-show-qr-btn').onclick = () => openQrOverlay();
+$('#qr-close-btn').onclick = () => closeQrOverlay();
+
+// ---- QR plein écran (à projeter ou à montrer sur une tablette) ----
+function renderQr(){
+  if (!repLive || !lastQrToken) return;
+  const url = location.href.split(/[?#]/)[0] + '?rep=' + repLive.id + '&t=' + lastQrToken;
+  try { $('#qr-box').innerHTML = QR.toSvg(url); } catch (e) { $('#qr-box').textContent = 'QR indisponible'; }
+}
+async function requestWakeLock(){
+  try { if ('wakeLock' in navigator && !wakeLockHandle) { wakeLockHandle = await navigator.wakeLock.request('screen'); wakeLockHandle.addEventListener('release', () => { wakeLockHandle = null; }); } } catch (e) {}
+}
+function releaseWakeLock(){ try { if (wakeLockHandle) wakeLockHandle.release(); } catch (e) {} wakeLockHandle = null; }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && qrOverlayOpen) requestWakeLock(); });
+function openQrOverlay(){
+  if (!repLive) return;
+  qrOverlayOpen = true; $('#qr-overlay').style.display = 'flex'; updateRepLiveUi(); renderQr(); requestWakeLock(); scheduleRepPoll(0);
+}
+function closeQrOverlay(){ qrOverlayOpen = false; $('#qr-overlay').style.display = 'none'; releaseWakeLock(); }
+
+// ---- détail d'une répétition (présents, corrections, suppression) ----
+async function toggleRepDetail(id){
+  const box = $('#rep-detail');
+  if (repDetailId === id) { repDetailId = null; box.style.display = 'none'; return; }
+  repDetailId = id; box.style.display = 'block'; box.innerHTML = '<p class="rep-empty">Chargement…</p>';
+  await loadRepDetail();
+}
+async function loadRepDetail(){
+  const id = repDetailId; if (id == null) return;
+  const box = $('#rep-detail');
+  try {
+    const res = await api('getSessionDetail', { session: id, password: orgaPw });
+    if (repDetailId !== id) return;
+    if (!res.ok) { box.innerHTML = `<p class="rep-empty">${esc(res.error || 'Erreur.')}</p>`; return; }
+    const s = res.session;
+    box.innerHTML = `<p class="rep-detail-title">${esc(formatRepDate(s.date))}${s.label ? ' · ' + esc(s.label) : ''} — ${plural(res.present.length, 'présent')}</p>
+      <div class="rep-list">${res.present.length ? res.present.map(p => `<div class="rep-count-row"><span>${esc(p.name)}<small>${esc((p.ts || '').slice(11, 16))}</small></span><button class="rep-x" data-rem="${esc(p.name)}" title="Retirer de cette répétition">✕</button></div>`).join('') : '<p class="rep-empty">Personne pour l\'instant.</p>'}</div>
+      <div class="row"><input type="text" id="rep-add-input" placeholder="Ajouter un présent (nom)" autocomplete="off"><button class="btn sm" id="rep-add-btn">Ajouter</button></div>
+      <div class="row"><button class="btn sm pink" id="rep-delete-btn">Supprimer cette répétition</button></div>`;
+    attachAC($('#rep-add-input'));
+    box.querySelectorAll('[data-rem]').forEach(btn => btn.onclick = async () => {
+      const name = btn.dataset.rem; if (!confirm(`Retirer "${name}" de cette répétition ?`)) return;
+      const r = await api('removePresence', { session: id, name, password: orgaPw });
+      if (r.ok) { toast('Présence retirée.'); await loadRepDetail(); refreshRepStats(); syncState(); } else toast(r.error || 'Erreur, réessaie.', true);
+    });
+    $('#rep-add-btn').onclick = async () => {
+      const name = $('#rep-add-input').value.trim(); if (!name) return;
+      const r = await api('addPresence', { session: id, name, password: orgaPw });
+      if (r.ok) { toast(r.already ? 'Déjà présent(e) à cette répétition.' : 'Présence ajoutée.'); await loadRepDetail(); refreshRepStats(); syncState(); } else toast(r.error || 'Erreur, réessaie.', true);
+    };
+    $('#rep-delete-btn').onclick = async () => {
+      if (!confirm(`Supprimer définitivement cette répétition et ses ${plural(res.present.length, 'présence')} ? Les compteurs seront recalculés.`)) return;
+      const r = await api('deleteSession', { session: id, password: orgaPw });
+      if (r.ok) { if (repLive && repLive.id === id) stopRepLive(); repDetailId = null; box.style.display = 'none'; toast('Répétition supprimée.'); refreshRepStats(); syncState(); } else toast(r.error || 'Erreur, réessaie.', true);
+    };
+  } catch (e) { if (repDetailId === id) box.innerHTML = '<p class="rep-empty">Erreur réseau, réessaie.</p>'; }
+}
 
 /* ================== ZOOM ================== */
 let lastW = 1000;
@@ -752,17 +1315,21 @@ $('#stageWrap').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e
   if (!API_URL) $('#demoBanner').style.display = 'block';
   const r = await api('get');
   serverHasState = !!(r.ok && r.state);
-  state = (r.ok && r.state) || defaultState();
+  state = (r.ok && r.state) || defaultState(); applyLive(r.live);
   if (innerWidth < 600) { zoom = 150; $("#zoom").value = zoom; }   // téléphone : plan agrandi, on fait défiler pour se déplacer
   if (PHOTOS_URL) { try { const j = await (await fetch(PHOTOS_URL)).json(); Object.keys(j).forEach(n => photos[key(n)] = j[n]); } catch (e) {} }
   render();
   if (innerWidth < 600) { const w = $('#stageWrap'); w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2; }
   if (orgaPw) { const c = await api('checkOrga', { password: orgaPw }); if (c.ok) await enterOrga(); else { orgaPw = null; ssSet('scene_pw', null); } }
+  initFromUrl();
+  if (me) refreshMyCount();
   if (!me && !isOrga()) openLogin();
+  let tick = 0;
   setInterval(async () => {
     if (document.hidden) return; const a = document.activeElement;
     if (a && (pop.contains(a) || $('#admin').contains(a))) return;
-    const x = await api('get'); if (x.ok && x.state && JSON.stringify(x.state) !== JSON.stringify(state)) { state = x.state; render(); if (isOrga()) renderAdmin(); }
+    await syncState();
+    tick++; if (isOrga()) { if (!repLive || tick % 3 === 0) refreshRepStats(); } else if (me && tick % 3 === 0) refreshMyCount();
   }, 20000);
 })();
 </script>
