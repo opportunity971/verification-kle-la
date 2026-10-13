@@ -67,6 +67,7 @@
   .stat-row{ display:flex; justify-content:space-between; align-items:baseline; padding: 8px 0; border-bottom: 1px solid rgba(255,246,229,0.08); font-size:0.85rem; }
   .stat-row .num{ font-weight:800; color:var(--jaune); font-family:'Baloo 2',sans-serif; font-size:1.2rem; }
   .stat-row .label{ font-size:0.78rem; color:var(--slate); }
+  .stat-row.confirmed-stat .num{ color: var(--vert); }
 
   .instrument-stats{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
   .instrument-stat-row{ display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; color:var(--creme); }
@@ -99,6 +100,7 @@
   .btn-save{ background: linear-gradient(90deg, var(--rouge), var(--jaune)); color: var(--nuit-deep); }
   .btn-clear{ background: transparent; border:2px solid var(--rouge); color:#FF9B94; }
   .btn-secondary{ background: transparent; border:2px solid rgba(255,246,229,0.25); color: var(--creme); }
+  .btn-present{ background: var(--vert); color: var(--nuit-deep); }
 
   .main{ padding: 28px 32px; overflow-x:auto; }
   .main-header{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 18px; flex-wrap:wrap; gap:12px; }
@@ -165,6 +167,21 @@
   .pos.blocked:hover{ transform: none; cursor: not-allowed; }
   .pos.blocked.blocked-empty:hover svg{ filter: none; }
 
+  /* Présence confirmée pour le prochain déboulé : pastille verte ✓ + halo vert, lisibles d'un coup d'œil */
+  .pos .presence-badge{
+    position:absolute; top:-2%; right:2%; width:34%; height:34%; border-radius:50%;
+    background: var(--vert); color: var(--nuit-deep);
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.7rem; font-weight:900; line-height:1;
+    border:2px solid var(--nuit-deep); box-shadow: 0 0 6px rgba(29,190,121,0.9);
+    pointer-events:none; z-index:3;
+  }
+  .pos.confirmed::after{
+    content:''; position:absolute; inset:-3px; border-radius:50%;
+    box-shadow: 0 0 0 2px rgba(29,190,121,0.9), 0 0 10px rgba(29,190,121,0.6);
+    pointer-events:none;
+  }
+
   #free-layer{ position:absolute; left:-300px; top:0; width:calc(100% + 600px); height:100%; pointer-events:none; z-index:3; }
   .pos.free{ position:absolute; width:90px; pointer-events:auto; }
   .organizer-view .pos.free{ cursor:grab; touch-action:none; outline:1px dashed rgba(255,201,60,0.55); outline-offset:-4px; border-radius:50%; }
@@ -210,6 +227,7 @@
   .seat-popup .seat-popup-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
   .seat-popup .seat-popup-name{ font-weight:700; font-family:'Baloo 2',sans-serif; font-size:0.92rem; color: var(--jaune); margin:0; }
   .seat-popup .seat-popup-instr{ color: var(--slate); margin:0; }
+  .seat-popup .seat-popup-presence{ color: var(--vert); font-weight:700; margin:0; font-size:0.8rem; }
   .seat-popup .seat-popup-select{
     width:100%; background: var(--nuit-deep); border:2px solid rgba(255,246,229,0.15);
     color: var(--creme); padding:6px 8px; border-radius:8px; font-family:inherit; font-size:0.8rem;
@@ -398,6 +416,7 @@
       <p class="panel-title">DATE DU DÉFILÉ</p>
       <input type="date" id="paradedate-input">
       <button class="btn btn-save" id="paradedate-save-btn">Enregistrer la date</button>
+      <p class="empty-msg" style="margin-top:8px; color:var(--slate); font-size:0.75rem; line-height:1.5;">Changer la date remet à zéro les confirmations de présence (✓ vertes) : chaque musicien devra reconfirmer pour la nouvelle date.</p>
     </div>
 
     <div id="codesec-block" style="display:none;">
@@ -460,6 +479,7 @@
     <div id="stats-block" style="display:none;">
       <div class="stat-row"><span><span class="num" id="stat-filled">0</span> <span class="label">/ <span id="stat-total">200</span> réservées</span></span></div>
       <div class="stat-row"><span><span class="num" id="stat-blocked">0</span> <span class="label">bloquées</span></span></div>
+      <div class="stat-row confirmed-stat" id="confirmed-row" style="display:none;"><span><span class="num" id="stat-confirmed">0</span> <span class="label">✓ présents confirmés pour le <span id="stat-confirmed-date"></span></span></span></div>
       <div class="stat-row" id="myrep-row" style="display:none;"><span><span class="num" id="myrep-num">0</span> <span class="label">/ <span id="myrep-total">0</span> répétitions suivies</span></span></div>
       <div id="instrument-stats" class="instrument-stats"></div>
     </div>
@@ -860,6 +880,7 @@ let roster = []; // array of authorized full names
 let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
 let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
 let paradeDate = ''; // date du défilé au format ISO (YYYY-MM-DD), gérée par l'organisateur
+let confirmed = {};  // présences confirmées pour la date du déboulé actuelle : { "nom normalisé": true }
 let selected = null;
 let isOrganizer = false;
 let organizerPopupExpanded = false; // false = bulle simple (par défaut), true = bulle complète avec tous les contrôles
@@ -1052,6 +1073,8 @@ async function loadAllData(){
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
     applyRowInstruments();
     paradeDate = data.paradeDate || '';
+    confirmed = {};
+    (Array.isArray(data.confirmed) ? data.confirmed : []).forEach(n => { confirmed[normalizeName(n)] = true; });
     codeRequired = data.codeRequired !== false; // absent (ancien script) = code exigé
     codeDisabledUntil = Number(data.codeDisabledUntil) || 0;
     renderParadeDateBanner();
@@ -1063,6 +1086,7 @@ async function loadAllData(){
     freeList = [];
     roster = [];
     rowLabels = {};
+    confirmed = {};
     return false;
   }
 }
@@ -1085,6 +1109,49 @@ function normalizeName(s){
   return (s || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire les accents
     .trim().toLowerCase().replace(/\s+/g,' ');
+}
+
+// ------------------------------------------------------------
+// Présence confirmée pour le prochain déboulé
+// ------------------------------------------------------------
+function isConfirmed(name){
+  return !!name && !!paradeDate && !!confirmed[normalizeName(name)];
+}
+
+// Ligne d'état de présence affichée dans les bulles (vide si pas de date ou pas confirmé)
+function presenceLineFor(name){
+  if(!isConfirmed(name)) return '';
+  return `<p class="seat-popup-presence">✅ Présent(e) le ${esc(formatParadeDate(paradeDate))}</p>`;
+}
+
+// Le musicien confirme ou annule SA présence (depuis sa propre bulle)
+async function setMyPresence(present, r, c){
+  try {
+    const res = await apiPost({ action:'setPresence', name: currentUserName, code: currentUserCode, present });
+    if(res.ok){
+      await loadAllData();
+      refreshAll();
+      showToast(present ? 'Présence confirmée !' : 'Présence annulée.');
+      showSeatPopup(r,c);
+    } else {
+      showToast(res.error || 'Erreur, réessaie.');
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+}
+
+// L'organisateur confirme ou retire la présence d'un musicien à sa place
+async function setPresenceByOrga(name, present, r, c){
+  try {
+    const res = await apiPost({ action:'setPresenceOrga', name, present, password: organizerPassword });
+    if(res.ok){
+      await loadAllData();
+      refreshAll();
+      showToast(present ? 'Présence confirmée.' : 'Présence retirée.');
+      showSeatPopup(r,c);
+    } else {
+      showToast(res.error || 'Erreur, réessaie.');
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
 }
 
 // ------------------------------------------------------------
@@ -1150,6 +1217,10 @@ function refreshCell(r,c){
   // Photo du musicien si la place est occupée et qu'une photo existe pour ce nom ; repli silencieux sinon.
   const photoUrl = (data.name && !data.blocked) ? photoUrlFor(data.name) : '';
   const photoHtml = photoUrl ? `<span class="photo-ring"><img src="${photoUrl}" alt="" loading="lazy" onerror="this.parentElement.style.display='none';"></span>` : '';
+  // Présence confirmée pour le déboulé : pastille verte ✓ + halo vert sur la silhouette
+  const isPresent = !!data.name && isConfirmed(data.name);
+  if(isPresent) el.classList.add('confirmed');
+  const presenceHtml = isPresent ? '<span class="presence-badge">✓</span>' : '';
   el.innerHTML = `
     <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
       <path d="${SILHOUETTE_PATH}" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
@@ -1158,12 +1229,13 @@ function refreshCell(r,c){
     ${photoHtml}
     ${(!photoUrl && initials) ? `<span class="initials">${initials}</span>` : ''}
     ${instrLabel ? `<span class="instr-label">${instrLabel}</span>` : ''}
+    ${presenceHtml}
   `;
 
   if(data.blocked){
     el.title = 'Place bloquée par l\'organisateur';
   } else if(data.name){
-    el.title = data.name + ' — ' + (sectionLabel[data.instrument] || '');
+    el.title = data.name + ' — ' + (sectionLabel[data.instrument] || '') + (isPresent ? ' — ✓ présent(e) au déboulé' : '');
   } else if(data.instrument){
     el.title = sectionLabel[data.instrument] + ' — libre';
   } else {
@@ -1188,6 +1260,17 @@ function updateStats(){
   document.getElementById('stat-blocked').textContent = blocked;
   document.getElementById('stat-total').textContent = ROWS * COLS + freeList.length;
   document.getElementById('intro-sub').textContent = `${ROWS * COLS} places · ${ROWS} rangées de 5. Clique une place libre de ton instrument pour réserver.`;
+
+  // Présents confirmés pour le déboulé (visible seulement quand une date est définie)
+  const confirmedRow = document.getElementById('confirmed-row');
+  if(paradeDate){
+    const nbConfirmed = Object.values(grid).filter(d => d.name && isConfirmed(d.name)).length;
+    document.getElementById('stat-confirmed').textContent = nbConfirmed;
+    document.getElementById('stat-confirmed-date').textContent = formatParadeDate(paradeDate);
+    confirmedRow.style.display = '';
+  } else {
+    confirmedRow.style.display = 'none';
+  }
 
   const counts = { basse:0, contrebasse:0, chan:0, konk:0, chacha:0, siyak:0, clave:0, solo:0 };
   Object.values(grid).forEach(d => {
@@ -1374,6 +1457,8 @@ document.getElementById('roster-bulk-btn').addEventListener('click', async () =>
 
 // ------------------------------------------------------------
 // Date du défilé — contrôle organisateur
+// Changer la date remet à zéro les confirmations de présence (elles
+// sont liées à la date côté serveur) : on recharge donc les données.
 // ------------------------------------------------------------
 document.getElementById('paradedate-save-btn').addEventListener('click', async () => {
   const val = document.getElementById('paradedate-input').value;
@@ -1382,6 +1467,8 @@ document.getElementById('paradedate-save-btn').addEventListener('click', async (
     if(result.ok){
       paradeDate = val;
       renderParadeDateBanner();
+      await loadAllData();
+      refreshAll();
       showToast('Date du défilé mise à jour.');
     } else {
       showToast(result.error || "Erreur d'enregistrement.");
@@ -1705,6 +1792,7 @@ function renderInfoPopup(r, c, data){
     ${photoHtml}
     <p class="seat-popup-name">${data.name}</p>
     <p class="seat-popup-instr">${instrDisplay}</p>
+    ${presenceLineFor(data.name)}
   `;
   positionSeatPopup(r,c);
 }
@@ -1717,6 +1805,7 @@ function renderOrganizerSimplePopup(r, c, data){
   popup.classList.remove('seat-popup-wide');
 
   let bodyHtml;
+  let presenceBtnHtml = '';
   if(data.removed){
     bodyHtml = `<p class="seat-popup-instr">Silhouette supprimée</p>`;
   } else if(data.blocked){
@@ -1730,8 +1819,15 @@ function renderOrganizerSimplePopup(r, c, data){
       ${photoHtml}
       <p class="seat-popup-name">${data.name}</p>
       <p class="seat-popup-instr">${instrDisplay}</p>
+      ${presenceLineFor(data.name)}
       ${orgaRepLine(data.name)}
     `;
+    // Pour un musicien dont on connaît la place : l'organisateur peut confirmer/retirer sa présence
+    if(paradeDate){
+      presenceBtnHtml = isConfirmed(data.name)
+        ? `<button class="btn btn-secondary seat-popup-btn" id="popup-orga-presence-btn">↩ Retirer sa présence</button>`
+        : `<button class="btn btn-present seat-popup-btn" id="popup-orga-presence-btn">✅ Marquer présent(e)</button>`;
+    }
   } else {
     const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Non attribué';
     bodyHtml = `<p class="seat-popup-instr">${instrDisplay} — libre</p>`;
@@ -1739,6 +1835,7 @@ function renderOrganizerSimplePopup(r, c, data){
 
   popup.innerHTML = `
     ${bodyHtml}
+    ${presenceBtnHtml}
     <button class="btn btn-secondary seat-popup-btn" id="popup-orga-expand-btn">⚙️ Modifier</button>
   `;
   positionSeatPopup(r,c);
@@ -1747,6 +1844,10 @@ function renderOrganizerSimplePopup(r, c, data){
     organizerPopupExpanded = true;
     showSeatPopup(r,c);
   });
+  const presBtn = document.getElementById('popup-orga-presence-btn');
+  if(presBtn){
+    presBtn.addEventListener('click', () => setPresenceByOrga(data.name, !isConfirmed(data.name), r, c));
+  }
 }
 
 // Bulle organisateur complète : reprend tous les contrôles de la barre
@@ -1843,20 +1944,40 @@ function renderMessagePopup(r, c, message){
   positionSeatPopup(r,c);
 }
 
+// Bulle du musicien sur SA propre place : il peut y confirmer (ou annuler)
+// sa présence au prochain déboulé, ou libérer sa place.
 function renderReleasePopup(r, c, data){
   const popup = document.getElementById('seat-popup');
   popup.classList.remove('seat-popup-wide');
   const instrDisplay = data.instrument ? sectionLabel[data.instrument] : 'Instrument non précisé';
   const photoUrl = photoUrlFor(data.name);
   const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
+
+  let presenceHtml = '';
+  if(paradeDate){
+    const dateText = formatParadeDate(paradeDate);
+    presenceHtml = isConfirmed(data.name)
+      ? `<p class="seat-popup-presence">✅ Tu as confirmé ta présence le ${esc(dateText)}</p>
+         <button class="btn btn-secondary seat-popup-btn" id="popup-presence-btn">Annuler ma présence</button>`
+      : `<button class="btn btn-present seat-popup-btn" id="popup-presence-btn">✅ Je serai présent(e) le ${esc(dateText)}</button>`;
+  } else {
+    presenceHtml = `<p class="seat-popup-instr">La date du prochain déboulé n'est pas encore annoncée.</p>`;
+  }
+
   popup.innerHTML = `
     ${photoHtml}
     <p class="seat-popup-name">${data.name} (toi)</p>
     <p class="seat-popup-instr">${instrDisplay} — réservée</p>
     ${ownRepLine()}
+    ${presenceHtml}
     <button class="btn btn-clear seat-popup-btn" id="popup-release-btn">Libérer ma place</button>
   `;
   positionSeatPopup(r,c);
+
+  const presBtn = document.getElementById('popup-presence-btn');
+  if(presBtn){
+    presBtn.addEventListener('click', () => setMyPresence(!isConfirmed(data.name), r, c));
+  }
   document.getElementById('popup-release-btn').addEventListener('click', async () => {
     try {
       const result = await apiPost({ action:'release', row:r, col:c, name: currentUserName, code: currentUserCode });
