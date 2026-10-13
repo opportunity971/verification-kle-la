@@ -177,6 +177,12 @@
     pointer-events:none; z-index:3;
   }
 
+  /* Plan des présents : on masque les absents, les présents se resserrent vers la gauche dans leur rangée */
+  .pos.condensed-hide{ display:none !important; }
+  .row-group.condensed-hide{ display:none; }
+  .condensed-empty{ text-align:center; color: var(--slate); font-size:0.85rem; line-height:1.5; padding:24px 12px; margin:0; }
+  .btn-secondary.active{ border-color: var(--vert); color: var(--vert); }
+
   #free-layer{ position:absolute; left:-300px; top:0; width:calc(100% + 600px); height:100%; pointer-events:none; z-index:3; }
   .pos.free{ position:absolute; width:90px; pointer-events:auto; }
   .organizer-view .pos.free{ cursor:grab; touch-action:none; outline:1px dashed rgba(255,201,60,0.55); outline-offset:-4px; border-radius:50%; }
@@ -570,6 +576,7 @@
     <div class="main-header">
       <h2>Formation — vue de dessus</h2>
       <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <button class="btn btn-secondary" id="condensed-btn" style="width:auto; margin-top:0; padding:7px 14px; font-size:0.8rem; display:none;">👥 Plan des présents</button>
         <div class="zoom-control">
           <button class="zoom-btn" id="zoom-out-btn" title="Dézoomer" aria-label="Dézoomer">−</button>
           <input type="range" id="zoom-slider" min="40" max="200" step="5" value="100" aria-label="Niveau de zoom">
@@ -582,6 +589,7 @@
     <div class="formation-viewport" id="formation-viewport">
       <div class="formation" id="formation">
         <div class="front-line" id="front-line-banner">TÊTE DU CORTÈGE</div>
+        <p class="condensed-empty" id="condensed-empty" style="display:none;">Personne n'a encore confirmé sa présence pour ce déboulé.</p>
       </div>
     </div>
   </div>
@@ -876,6 +884,8 @@ let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
 let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
 let paradeDate = ''; // date du défilé au format ISO (YYYY-MM-DD), gérée par l'organisateur
 let confirmed = {};  // présences confirmées pour la date du déboulé actuelle : { "nom normalisé": true }
+let condensedView = false; // true = plan des présents (absents masqués, présents resserrés dans leur rangée)
+let condenseRatio = 1;     // rapport hauteur condensée / hauteur complète, pour replacer les silhouettes libres
 let selected = null;
 let isOrganizer = false;
 let organizerPopupExpanded = false; // false = bulle simple (par défaut), true = bulle complète avec tous les contrôles
@@ -920,7 +930,7 @@ function renderParadeDateBanner(){
   if(gateEl) gateEl.textContent = text;
   // Au-dessus de la grille : remplace "TÊTE DU CORTÈGE" par la date dès qu'elle est définie.
   const frontLineEl = document.getElementById('front-line-banner');
-  if(frontLineEl) frontLineEl.textContent = text || 'TÊTE DU CORTÈGE';
+  if(frontLineEl) frontLineEl.textContent = (text || 'TÊTE DU CORTÈGE') + ((condensedView && paradeDate) ? ' · PLAN DES PRÉSENTS' : '');
 }
 
 // ------------------------------------------------------------
@@ -1240,12 +1250,59 @@ function refreshCell(r,c){
   if(selected && selected.r===r && selected.c===c) el.classList.add('selected');
 }
 
+// Plan des présents : masque les places dont le musicien n'a pas confirmé sa présence.
+// Les places masquées sont retirées de la grille (display:none), donc les présents d'une
+// rangée se resserrent vers la gauche en gardant leur ordre, et les rangées sans présent
+// disparaissent. Les numéros et étiquettes d'instrument des rangées restent ceux du plan d'origine.
+function applyCondensedLayout(){
+  const btn = document.getElementById('condensed-btn');
+  if(!paradeDate) condensedView = false;
+  const formation = document.getElementById('formation');
+  const groups = formation.querySelectorAll('.row-group');
+
+  // État complet d'abord, pour pouvoir mesurer la hauteur d'origine
+  groups.forEach(g => g.classList.remove('condensed-hide'));
+  formation.querySelectorAll('.pos.condensed-hide').forEach(el => el.classList.remove('condensed-hide'));
+  const fullH = formation.offsetHeight;
+
+  let nbShown = 0;
+  if(condensedView){
+    formation.querySelectorAll('.pos').forEach(el => {
+      const d = grid[keyOf(el.dataset.r, el.dataset.c)];
+      const present = d && !d.removed && d.name && isConfirmed(d.name);
+      if(present) nbShown++; else el.classList.add('condensed-hide');
+    });
+    groups.forEach(g => { if(!g.querySelector('.pos:not(.condensed-hide)')) g.classList.add('condensed-hide'); });
+  }
+  const condH = formation.offsetHeight;
+  condenseRatio = (condensedView && fullH > 0) ? (condH / fullH) : 1;
+
+  const emptyMsg = document.getElementById('condensed-empty');
+  if(emptyMsg) emptyMsg.style.display = (condensedView && nbShown === 0) ? 'block' : 'none';
+
+  if(btn){
+    btn.style.display = paradeDate ? '' : 'none';
+    const nbConfirmed = Object.values(grid).filter(d => d && !d.removed && d.name && isConfirmed(d.name)).length;
+    btn.textContent = condensedView ? '↩ Plan complet' : `👥 Plan des présents (${nbConfirmed})`;
+    btn.classList.toggle('active', condensedView);
+  }
+  renderParadeDateBanner();
+  try{ layoutFree(); }catch(_){}
+}
+
+document.getElementById('condensed-btn').addEventListener('click', () => {
+  condensedView = !condensedView;
+  hideSeatPopup();
+  applyCondensedLayout();
+});
+
 function refreshAll(){
   try{ setTimeout(layoutFree, 0); setTimeout(layoutFree, 400); }catch(_){}
   syncFreeDOM();
   for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) refreshCell(r,c);
   freeList.forEach(f => refreshCell(FREE_BASE + f.id, 1));
   updateStats();
+  applyCondensedLayout();
 }
 
 function updateStats(){
@@ -2446,7 +2503,7 @@ function layoutFree(){
     if(!el) return;
     el.style.width = w + 'px';
     el.style.left = Math.min(maxX - w, Math.max(minX, f.x * k + FREE_PAD)) + 'px';
-    el.style.top = (f.y * k) + 'px';
+    el.style.top = (f.y * k * (condensedView ? condenseRatio : 1)) + 'px';
   });
 }
 window.addEventListener('resize', layoutFree);
@@ -2458,6 +2515,7 @@ function syncFreeDOM(){
 
 function freePointerDown(e){
   if(!isOrganizer) return;
+  if(condensedView){ showToast('Repasse au plan complet pour déplacer les silhouettes libres.'); return; }
   const el = e.currentTarget;
   freeDrag = { el, id: Number(el.dataset.free), sx: e.clientX, sy: e.clientY,
                ox: parseFloat(el.style.left) || 0, oy: parseFloat(el.style.top) || 0,
