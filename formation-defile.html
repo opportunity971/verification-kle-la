@@ -2479,7 +2479,7 @@ const FREE_REF_W = 560;
 function freeMetrics(){
   const formation = document.getElementById('formation');
   const k = (formation.offsetWidth || FREE_REF_W) / FREE_REF_W;
-  const cell = formation.querySelector('.pos:not(.free)');
+  const cell = formation.querySelector('.pos:not(.free):not(.condensed-hide)');
   const w = (cell && cell.offsetWidth) ? cell.offsetWidth : Math.round(98 * k);
   return { k, w };
 }
@@ -2515,7 +2515,6 @@ function syncFreeDOM(){
 
 function freePointerDown(e){
   if(!isOrganizer) return;
-  if(condensedView){ showToast('Repasse au plan complet pour déplacer les silhouettes libres.'); return; }
   const el = e.currentTarget;
   freeDrag = { el, id: Number(el.dataset.free), sx: e.clientX, sy: e.clientY,
                ox: parseFloat(el.style.left) || 0, oy: parseFloat(el.style.top) || 0,
@@ -2542,7 +2541,7 @@ async function endFreeDrag(){
   if(!d.moved) return;
   freeDragMoved = true; setTimeout(() => { freeDragMoved = false; }, 350);
   const kk = freeMetrics().k;
-  const x = Math.round((parseFloat(d.el.style.left) - FREE_PAD) / kk), y = Math.round(parseFloat(d.el.style.top) / kk);
+  const x = Math.round((parseFloat(d.el.style.left) - FREE_PAD) / kk), y = Math.round(parseFloat(d.el.style.top) / (kk * (condensedView ? (condenseRatio || 1) : 1)));
   const f = freeList.find(v => v.id === d.id);
   if(f){ f.x = x; f.y = y; freeSig = freeSignature(); }
   try {
