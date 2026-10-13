@@ -177,10 +177,15 @@
     pointer-events:none; z-index:3;
   }
 
-  /* Plan des présents : on masque les absents, les présents se resserrent vers la gauche dans leur rangée */
-  .pos.condensed-hide{ display:none !important; }
-  .row-group.condensed-hide{ display:none; }
-  .condensed-empty{ text-align:center; color: var(--slate); font-size:0.85rem; line-height:1.5; padding:24px 12px; margin:0; }
+  /* Plan des présents : chacun reste à sa place, les absents sont des silhouettes en pointillé */
+  .pos.ghost{ opacity:0.5; }
+  .pos.ghost svg{ color: var(--slate); }
+  .pos.move-target{ opacity:1; animation: moveTargetPulse 1.1s ease-in-out infinite; cursor:pointer; }
+  .pos.move-target svg path, .pos.move-target svg circle{ stroke: var(--vert); }
+  .pos.move-source::after{ content:''; position:absolute; inset:-3px; border:2px dashed var(--vert); border-radius:12px; pointer-events:none; }
+  @keyframes moveTargetPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+  .move-hint{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:60; background:var(--nuit-deep); color:var(--creme, #fff6e5); border:1.5px solid var(--vert); border-radius:999px; padding:9px 16px; font-size:0.85rem; display:flex; gap:12px; align-items:center; box-shadow:0 6px 20px rgba(0,0,0,0.45); max-width:92vw; }
+  .move-hint button{ background:transparent; border:1px solid var(--slate); color:inherit; border-radius:999px; padding:3px 10px; cursor:pointer; font-size:0.8rem; }
   .btn-secondary.active{ border-color: var(--vert); color: var(--vert); }
 
   #free-layer{ position:absolute; left:-300px; top:0; width:calc(100% + 600px); height:100%; pointer-events:none; z-index:3; }
@@ -589,7 +594,6 @@
     <div class="formation-viewport" id="formation-viewport">
       <div class="formation" id="formation">
         <div class="front-line" id="front-line-banner">TÊTE DU CORTÈGE</div>
-        <p class="condensed-empty" id="condensed-empty" style="display:none;">Personne n'a encore confirmé sa présence pour ce déboulé.</p>
       </div>
     </div>
   </div>
@@ -884,8 +888,10 @@ let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
 let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
 let paradeDate = ''; // date du défilé au format ISO (YYYY-MM-DD), gérée par l'organisateur
 let confirmed = {};  // présences confirmées pour la date du déboulé actuelle : { "nom normalisé": true }
-let condensedView = false; // true = plan des présents (absents masqués, présents resserrés dans leur rangée)
-let condenseRatio = 1;     // rapport hauteur condensée / hauteur complète, pour replacer les silhouettes libres
+let condensedView = false; // true = plan des présents (absents en pointillé à leur place)
+let dayPlan = {};          // déplacements du jour (plan des présents) : { "nom normalisé": {r,c} }, liés à la date du déboulé
+let dayView = {};          // place "r-c" -> musicien présent affiché à cette place (calculé)
+let moveSrc = null;        // organisateur en train de déplacer un présent : { name }
 let selected = null;
 let isOrganizer = false;
 let organizerPopupExpanded = false; // false = bulle simple (par défaut), true = bulle complète avec tous les contrôles
@@ -1078,6 +1084,8 @@ async function loadAllData(){
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
     applyRowInstruments();
     paradeDate = data.paradeDate || '';
+    dayPlan = {};
+    if(data.dayPlan && typeof data.dayPlan === 'object'){ Object.keys(data.dayPlan).forEach(k => { const v = data.dayPlan[k]; if(v && v.r && v.c) dayPlan[k] = { r:Number(v.r), c:Number(v.c) }; }); }
     confirmed = {};
     (Array.isArray(data.confirmed) ? data.confirmed : []).forEach(n => { confirmed[normalizeName(n)] = true; });
     codeRequired = data.codeRequired !== false; // absent (ancien script) = code exigé
@@ -1092,6 +1100,7 @@ async function loadAllData(){
     roster = [];
     rowLabels = {};
     confirmed = {};
+    dayPlan = {};
     return false;
   }
 }
@@ -1195,7 +1204,7 @@ function buildGridDOM(){
 
 function refreshCell(r,c){
   const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
-  const data = grid[keyOf(r,c)] || {instrument:'',name:'',blocked:false,removed:false};
+  const data = cellDataFor(r,c);
   el.className = el.dataset.free ? 'pos free' : 'pos';
   if(data.instrument) el.classList.add(data.instrument);
   if(data.name) el.classList.add('taken');
@@ -1204,6 +1213,20 @@ function refreshCell(r,c){
     if(!data.instrument) el.classList.add('blocked-empty');
   }
   if(data.removed) el.classList.add('removed');
+
+  if(data.ghost){
+    el.classList.add('ghost');
+    if(moveSrc && !isFreeRow(r)) el.classList.add('move-target');
+    el.innerHTML = `
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <path d="${SILHOUETTE_PATH}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <circle cx="20" cy="13" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
+      </svg>
+    `;
+    el.title = data.absentName ? (data.absentName + ' — absent(e)') : 'Place libre';
+    if(selected && selected.r===r && selected.c===c) el.classList.add('selected');
+    return;
+  }
 
   if(data.removed){
     el.innerHTML = `
@@ -1248,56 +1271,151 @@ function refreshCell(r,c){
   }
   if(activeFilter && data.instrument !== activeFilter) el.classList.add('faded');
   if(selected && selected.r===r && selected.c===c) el.classList.add('selected');
+  if(moveSrc && moveSrc.name === data.name) el.classList.add('move-source');
 }
 
-// Plan des présents : masque les places dont le musicien n'a pas confirmé sa présence.
-// Les places masquées sont retirées de la grille (display:none), donc les présents d'une
-// rangée se resserrent vers la gauche en gardant leur ordre, et les rangées sans présent
-// disparaissent. Les numéros et étiquettes d'instrument des rangées restent ceux du plan d'origine.
+// ------------------------------------------------------------
+// Plan des présents : chacun reste à sa place, les absents (et les places libres)
+// apparaissent en silhouettes pointillées. L'organisateur peut déplacer un présent
+// vers une place en pointillé pour combler les vides ; ces déplacements ne valent que
+// pour la date du déboulé (le plan d'origine n'est jamais modifié).
+// ------------------------------------------------------------
+function homeKeyFor(name){
+  for(const k of Object.keys(grid)){
+    const d = grid[k];
+    if(d && d.name && !d.removed && normalizeName(d.name) === normalizeName(name)) return k;
+  }
+  return null;
+}
+
+function computeDayView(){
+  dayView = {};
+  if(!condensedView) return;
+  const placed = {};
+  const moved = [];
+  Object.keys(grid).forEach(k => {
+    const d = grid[k];
+    if(!d || d.removed || d.blocked || !d.name || !isConfirmed(d.name)) return;
+    const [r] = k.split('-').map(Number);
+    const t = isFreeRow(r) ? null : dayPlan[normalizeName(d.name)];
+    if(t && keyOf(t.r, t.c) !== k) moved.push({ k, d, t });
+    else { dayView[k] = Object.assign({}, d, { homeKey:k, moved:false }); placed[k] = true; }
+  });
+  moved.forEach(m => {
+    const tk = keyOf(m.t.r, m.t.c);
+    const tg = grid[tk];
+    const free = !dayView[tk] && !(tg && (tg.removed || tg.blocked));
+    if(free) dayView[tk] = Object.assign({}, m.d, { homeKey:m.k, moved:true });
+    else dayView[m.k] = Object.assign({}, m.d, { homeKey:m.k, moved:false }); // cible prise : retour à la place d'origine
+  });
+}
+
+// Données affichées pour une place : en plan complet = le plan réel ; en plan des présents = le présent
+// qui s'y trouve aujourd'hui, ou une silhouette « fantôme » (absent / place libre).
+function cellDataFor(r, c){
+  const real = grid[keyOf(r,c)] || { instrument:'', name:'', blocked:false, removed:false };
+  if(!condensedView || real.removed || real.blocked) return real;
+  const v = dayView[keyOf(r,c)];
+  if(v) return v;
+  return { instrument: real.instrument, name:'', blocked:false, removed:false, ghost:true, absentName: real.name || '' };
+}
+
 function applyCondensedLayout(){
   const btn = document.getElementById('condensed-btn');
-  if(!paradeDate) condensedView = false;
-  const formation = document.getElementById('formation');
-  const groups = formation.querySelectorAll('.row-group');
-
-  // État complet d'abord, pour pouvoir mesurer la hauteur d'origine
-  groups.forEach(g => g.classList.remove('condensed-hide'));
-  formation.querySelectorAll('.pos.condensed-hide').forEach(el => el.classList.remove('condensed-hide'));
-  const fullH = formation.offsetHeight;
-
-  let nbShown = 0;
-  if(condensedView){
-    formation.querySelectorAll('.pos').forEach(el => {
-      const d = grid[keyOf(el.dataset.r, el.dataset.c)];
-      const present = d && !d.removed && d.name && isConfirmed(d.name);
-      if(present) nbShown++; else el.classList.add('condensed-hide');
-    });
-    groups.forEach(g => { if(!g.querySelector('.pos:not(.condensed-hide)')) g.classList.add('condensed-hide'); });
-  }
-  const condH = formation.offsetHeight;
-  condenseRatio = (condensedView && fullH > 0) ? (condH / fullH) : 1;
-
-  const emptyMsg = document.getElementById('condensed-empty');
-  if(emptyMsg) emptyMsg.style.display = (condensedView && nbShown === 0) ? 'block' : 'none';
-
+  if(!paradeDate){ condensedView = false; moveSrc = null; }
   if(btn){
     btn.style.display = paradeDate ? '' : 'none';
     const nbConfirmed = Object.values(grid).filter(d => d && !d.removed && d.name && isConfirmed(d.name)).length;
     btn.textContent = condensedView ? '↩ Plan complet' : `👥 Plan des présents (${nbConfirmed})`;
     btn.classList.toggle('active', condensedView);
   }
+  updateMoveHint();
   renderParadeDateBanner();
-  try{ layoutFree(); }catch(_){}
+}
+
+function updateMoveHint(){
+  let hint = document.getElementById('move-hint');
+  if(!(condensedView && moveSrc)){ if(hint) hint.remove(); return; }
+  if(!hint){
+    hint = document.createElement('div'); hint.id = 'move-hint'; hint.className = 'move-hint';
+    document.body.appendChild(hint);
+  }
+  hint.innerHTML = `<span>↔ Touche une place en pointillé pour y placer <b></b></span><button type="button">Annuler</button>`;
+  hint.querySelector('b').textContent = moveSrc.name;
+  hint.querySelector('button').addEventListener('click', () => { moveSrc = null; refreshAll(); });
+}
+
+// Clic sur une place en plan des présents
+function condensedClick(r, c){
+  popupOpenedAt = Date.now();
+  const d = cellDataFor(r, c);
+  if(moveSrc){
+    if(d.ghost && !isFreeRow(r)){ moveDayPlace(moveSrc.name, r, c); return; }
+    moveSrc = null; hideSeatPopup(); refreshAll();
+    return;
+  }
+  selected = { r, c };
+  refreshAll();
+  if(d.ghost || d.removed || d.blocked || !d.name){ hideSeatPopup(); return; }
+  showSeatPopup(r, c);
+}
+
+function renderDayPopup(r, c, d){
+  const popup = document.getElementById('seat-popup');
+  popup.classList.remove('seat-popup-wide');
+  const instrDisplay = d.instrument ? sectionLabel[d.instrument] : 'Instrument non précisé';
+  const photoUrl = photoUrlFor(d.name);
+  const photoHtml = photoUrl ? `<span class="seat-popup-photo"><img src="${photoUrl}" alt="" onerror="this.parentElement.style.display='none';"></span>` : '';
+  const movable = !isFreeRow(r);
+  popup.innerHTML = `
+    ${photoHtml}
+    <p class="seat-popup-name">${esc(d.name)}</p>
+    <p class="seat-popup-instr">${instrDisplay}</p>
+    ${presenceLineFor(d.name)}
+    ${d.moved ? '<p class="seat-popup-instr">↔ Déplacé(e) pour ce déboulé</p>' : ''}
+    ${movable ? '<button class="btn btn-present seat-popup-btn" id="day-move-btn">↔ Déplacer vers une place vide</button>' : ''}
+    ${d.moved ? '<button class="btn btn-secondary seat-popup-btn" id="day-reset-btn">↩ Remettre à sa place d\'origine</button>' : ''}
+    <button class="btn btn-secondary seat-popup-btn" id="day-unpresent-btn">↩ Retirer sa présence</button>
+  `;
+  positionSeatPopup(r, c);
+  const mv = document.getElementById('day-move-btn');
+  if(mv) mv.addEventListener('click', () => {
+    moveSrc = { name: d.name };
+    hideSeatPopup(); refreshAll();
+  });
+  const rs = document.getElementById('day-reset-btn');
+  if(rs) rs.addEventListener('click', () => moveDayPlace(d.name, 0, 0));
+  document.getElementById('day-unpresent-btn').addEventListener('click', () => setPresenceByOrga(d.name, false, r, c));
+}
+
+// r = c = 0 : le musicien revient à sa place d'origine
+async function moveDayPlace(name, r, c){
+  const key = normalizeName(name);
+  try {
+    const res = await apiPost({ action:'setDayPlace', name, r, c, password: organizerPassword });
+    if(res.ok){
+      if(r && c) dayPlan[key] = { r, c }; else delete dayPlan[key];
+      moveSrc = null;
+      hideSeatPopup();
+      await loadAllData();
+      refreshAll();
+      showToast(r && c ? 'Musicien déplacé pour ce déboulé.' : 'Remis à sa place d\'origine.');
+    } else {
+      showToast(res.error || 'Erreur, réessaie.');
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
 }
 
 document.getElementById('condensed-btn').addEventListener('click', () => {
   condensedView = !condensedView;
+  moveSrc = null;
   hideSeatPopup();
-  applyCondensedLayout();
+  refreshAll();
 });
 
 function refreshAll(){
   try{ setTimeout(layoutFree, 0); setTimeout(layoutFree, 400); }catch(_){}
+  computeDayView();
   syncFreeDOM();
   for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) refreshCell(r,c);
   freeList.forEach(f => refreshCell(FREE_BASE + f.id, 1));
@@ -1729,6 +1847,7 @@ async function loadGrid(){
 
 let popupOpenedAt = 0;   // un léger décalage de page juste après l'ouverture de la bulle ne doit pas la refermer
 function selectPos(r,c){
+  if(condensedView){ condensedClick(r,c); return; }
   popupOpenedAt = Date.now();
   selected = {r,c};
   organizerPopupExpanded = false; // chaque nouvelle sélection repart sur la bulle simple
@@ -1748,6 +1867,12 @@ function selectPos(r,c){
 // vers la bulle complète (tous les contrôles) à la demande.
 // ------------------------------------------------------------
 function showSeatPopup(r,c){
+  if(condensedView){
+    const cd = cellDataFor(r,c);
+    if(cd.ghost || cd.removed || cd.blocked || !cd.name){ hideSeatPopup(); return; }
+    if(isOrganizer) renderDayPopup(r,c,cd); else renderInfoPopup(r,c,cd);
+    return;
+  }
   const data = grid[keyOf(r,c)] || { instrument:'', name:'', blocked:false, removed:false };
 
   if(isOrganizer){
@@ -2479,7 +2604,7 @@ const FREE_REF_W = 560;
 function freeMetrics(){
   const formation = document.getElementById('formation');
   const k = (formation.offsetWidth || FREE_REF_W) / FREE_REF_W;
-  const cell = formation.querySelector('.pos:not(.free):not(.condensed-hide)');
+  const cell = formation.querySelector('.pos:not(.free)');
   const w = (cell && cell.offsetWidth) ? cell.offsetWidth : Math.round(98 * k);
   return { k, w };
 }
@@ -2503,7 +2628,7 @@ function layoutFree(){
     if(!el) return;
     el.style.width = w + 'px';
     el.style.left = Math.min(maxX - w, Math.max(minX, f.x * k + FREE_PAD)) + 'px';
-    el.style.top = (f.y * k * (condensedView ? condenseRatio : 1)) + 'px';
+    el.style.top = (f.y * k) + 'px';
   });
 }
 window.addEventListener('resize', layoutFree);
@@ -2541,7 +2666,7 @@ async function endFreeDrag(){
   if(!d.moved) return;
   freeDragMoved = true; setTimeout(() => { freeDragMoved = false; }, 350);
   const kk = freeMetrics().k;
-  const x = Math.round((parseFloat(d.el.style.left) - FREE_PAD) / kk), y = Math.round(parseFloat(d.el.style.top) / (kk * (condensedView ? (condenseRatio || 1) : 1)));
+  const x = Math.round((parseFloat(d.el.style.left) - FREE_PAD) / kk), y = Math.round(parseFloat(d.el.style.top) / kk);
   const f = freeList.find(v => v.id === d.id);
   if(f){ f.x = x; f.y = y; freeSig = freeSignature(); }
   try {
