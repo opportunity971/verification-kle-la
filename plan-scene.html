@@ -935,7 +935,10 @@ $('#lgo').onclick = async () => {
   const code = $('#lc').value.trim();
   if (!$('#lp').value.trim() || !$('#ln').value.trim()) { $('#lerr').textContent = 'Prénom et nom, s\'il te plaît.'; return; }
   const r = await api('checkAccess', { name, code });
-  if (r.ok && r.allowed) { me = r.name || name; myCode = code; lsSet('scene_me', me); lsSet('scene_code', code); $('#lc').value = ''; $('#loginOv').style.display = 'none'; render(); refreshMyCount(); if (pendingCheckin) runCheckin(me, myCode); else toast('Bienvenue ' + me); }
+  if (r.ok && r.allowed) {
+    // un participant ne garde jamais les droits organisateur d'une session précédente
+    if (isOrga()) { if (moving) setMoving(false); leaveOrganizer(); orgaPw = null; ssSet('scene_pw', null); $('#admin').style.display = 'none'; full = false; sel = null; pop.style.display = 'none'; }
+    me = r.name || name; myCode = code; lsSet('scene_me', me); lsSet('scene_code', code); $('#lc').value = ''; $('#loginOv').style.display = 'none'; render(); refreshMyCount(); if (pendingCheckin) runCheckin(me, myCode); else toast('Bienvenue ' + me); }
   else $('#lerr').textContent = r.error || 'Nom ou code incorrect. Vérifie, ou préviens un organisateur.';
 };
 $('#btnOrga').onclick = async () => {
