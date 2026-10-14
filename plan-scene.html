@@ -751,7 +751,8 @@ function renderPop(){
       if (mine) h += '<button class="btn pink" data-act="release">Libérer ma place</button>';
     } else {
       if (g) h += `${chip}`;
-      if (!me) h += '<div style="margin:6px 0">Connecte-toi pour réserver cette place.</div><button class="btn" data-act="login">Me connecter</button>';
+      if (!me && isOrga()) h += '<div class="small" style="margin:6px 0">Place libre.</div>';
+      else if (!me) h += '<div style="margin:6px 0">Connecte-toi pour réserver cette place.</div><button class="btn" data-act="login">Me connecter</button>';
       else {
         if (!arc.groupId && !seat.fixed) h += `<select id="pg"><option value="">Mon instrument / ma voix…</option>${groupOptions(arc, '')}</select>`;
         h += '<button class="btn" data-act="reserve">Réserver cette place</button>';
@@ -799,6 +800,10 @@ $('#stage').addEventListener('click', e => {
 function openSeat(arcId, k){
   if (sel && sel.arcId === arcId && sel.k === k) { closePop(); return; }
   sel = { arcId, k }; full = false;
+  { // organisateur : sur une place libre, on ouvre directement la saisie du nom (pas de connexion)
+    const arc0 = state.arcs.find(a => a.id === arcId), seat0 = arc0 && arc0.seats[k];
+    if (isOrga() && seat0 && !seat0.name && !seat0.blocked) full = true;
+  }
   // si la place est coupée sur le côté, on recentre le plan dessus avant d'ouvrir la bulle
   const el = $('#stage').querySelector(`[data-seat="${arcId}:${k}"]`);
   if (el) { const r = el.getBoundingClientRect(); if (r.left < 24 || r.right > innerWidth - 24) { const w = $('#stageWrap'); w.scrollLeft += (r.left + r.width / 2) - innerWidth / 2; } }
