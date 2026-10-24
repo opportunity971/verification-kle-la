@@ -2639,7 +2639,18 @@ function layoutFree(){
   const layer = document.getElementById('free-layer');
   if(!layer) return;
   const { k, w } = freeMetrics();
-  const bd = freeBounds(), minX = bd.min, maxX = Math.max(bd.min + w, bd.max);
+  const formation = document.getElementById('formation');
+  const isOrgaView = document.getElementById('main-layout').classList.contains('organizer-view');
+  // Limites de la couche elle-même (grille + FREE_PAD de chaque côté) : simple garde-fou.
+  let minX = 0, maxX = Math.max(w, formation.offsetWidth + 2 * FREE_PAD);
+  if(isOrgaView){
+    // Organisateur : on garde la silhouette atteignable à l'écran (pour pouvoir la ressaisir et la glisser).
+    const bd = freeBounds();
+    minX = bd.min; maxX = Math.max(bd.min + w, bd.max);
+  }
+  // Musicien : on affiche la silhouette à sa vraie place par rapport à la grille (x * k, mesuré depuis le bord de la grille),
+  // sans la ramener de force sur les colonnes 1 et 5 quand l'écran est étroit (téléphone). Sur petit écran, un zoom arrière
+  // (curseur ou pincement) suffit à voir les silhouettes situées de chaque côté de la grille.
   freeList.forEach(f => {
     const el = layer.querySelector(`[data-free="${f.id}"]`);
     if(!el) return;
