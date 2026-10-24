@@ -204,6 +204,16 @@
   .organizer-view .formation-viewport::before, .organizer-view .formation-viewport::after{ content:''; flex:0 0 150px; }
   #formation{ transform-origin: top center; transition: transform 0.08s ease; }
 
+  /* Téléphone / écran tactile : affichage allégé. Les ombres floues (drop-shadow) sur ~200 silhouettes
+     et l'animation de zoom pendant le pincement ralentissent beaucoup le zoom et le défilement. */
+  @media (max-width: 820px), (pointer: coarse){
+    #formation{ transition: none; }
+    .pos svg, .pos:hover svg{ filter: none; }
+    .pos.taken svg, .pos.taken:hover svg{ filter: grayscale(0.25) saturate(0.65) brightness(0.78); }
+    .pos.blocked:not(.blocked-empty) svg{ filter: grayscale(0.35) saturate(0.55) brightness(0.65) !important; }
+    .pos .photo-ring{ box-shadow: none; }
+  }
+
   .zoom-control{ display:flex; align-items:center; gap:8px; }
   .zoom-btn{
     width:26px; height:26px; border-radius:50%; border:2px solid rgba(255,246,229,0.25);
@@ -1216,6 +1226,14 @@ function buildGridDOM(){
   }
 }
 
+// Ne touche au contenu d'une place que s'il a vraiment changé : sinon chaque clic reconstruisait les ~200 silhouettes
+// et leurs photos (nouvelles balises <img> à décoder à chaque fois), ce qui faisait ramer la page sur PC comme sur téléphone.
+function setCellHtml(el, html){
+  if(el._html === html) return;
+  el._html = html;
+  el.innerHTML = html;
+}
+
 function refreshCell(r,c){
   const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
   const data = cellDataFor(r,c);
@@ -1231,25 +1249,25 @@ function refreshCell(r,c){
   if(data.ghost){
     el.classList.add('ghost');
     if(moveSrc && !isFreeRow(r)) el.classList.add('move-target');
-    el.innerHTML = `
+    setCellHtml(el, `
       <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="${SILHOUETTE_PATH}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
         <circle cx="20" cy="13" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/>
       </svg>
       ${data.instrument ? `<span class="instr-label">${sectionAbbrev[data.instrument] || ''}</span>` : ''}
-    `;
+    `);
     el.title = data.absentName ? (data.absentName + ' — absent(e)') : 'Place libre';
     if(selected && selected.r===r && selected.c===c) el.classList.add('selected');
     return;
   }
 
   if(data.removed){
-    el.innerHTML = `
+    setCellHtml(el, `
       <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="${SILHOUETTE_PATH}" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
         <circle cx="20" cy="13" r="7.5" fill="none" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="3 3"/>
       </svg>
-    `;
+    `);
     el.title = 'Silhouette supprimée';
     if(selected && selected.r===r && selected.c===c) el.classList.add('selected');
     return;
@@ -1264,7 +1282,7 @@ function refreshCell(r,c){
   const isPresent = !!data.name && isConfirmed(data.name);
   if(isPresent) el.classList.add('confirmed');
   const presenceHtml = isPresent ? '<span class="presence-badge">✓</span>' : '';
-  el.innerHTML = `
+  setCellHtml(el, `
     <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
       <path d="${SILHOUETTE_PATH}" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
       <circle cx="20" cy="13" r="7.5" fill="currentColor" stroke="rgba(255,246,229,0.45)" stroke-width="1.2"/>
@@ -1273,7 +1291,7 @@ function refreshCell(r,c){
     ${(!photoUrl && initials) ? `<span class="initials">${initials}</span>` : ''}
     ${instrLabel ? `<span class="instr-label">${instrLabel}</span>` : ''}
     ${presenceHtml}
-  `;
+  `);
 
   if(data.blocked){
     el.title = 'Place bloquée par l\'organisateur';
