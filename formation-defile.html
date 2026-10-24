@@ -419,10 +419,11 @@
     <div class="banner" id="test-mode-banner" style="display:none;"></div>
 
     <div id="paradedate-block" style="display:none;">
-      <p class="panel-title">DATE DU DÉFILÉ</p>
+      <p class="panel-title">DATE ET NOM DU DÉBOULÉ</p>
       <input type="date" id="paradedate-input">
-      <button class="btn btn-save" id="paradedate-save-btn">Enregistrer la date</button>
-      <p class="empty-msg" style="margin-top:8px; color:var(--slate); font-size:0.75rem; line-height:1.5;">Changer la date remet à zéro les confirmations de présence (✓ vertes) : chaque musicien devra reconfirmer pour la nouvelle date.</p>
+      <input type="text" id="paradename-input" maxlength="60" placeholder="Nom du déboulé (facultatif)" autocomplete="off" style="margin-top:8px;">
+      <button class="btn btn-save" id="paradedate-save-btn">Enregistrer</button>
+      <p class="empty-msg" style="margin-top:8px; color:var(--slate); font-size:0.75rem; line-height:1.5;">Changer la date remet à zéro les confirmations de présence (✓ vertes) : chaque musicien devra reconfirmer pour la nouvelle date. Changer seulement le nom ne touche pas aux confirmations.</p>
     </div>
 
     <div id="codesec-block" style="display:none;">
@@ -887,6 +888,7 @@ let roster = []; // array of authorized full names
 let rowLabels = {}; // { "5": "Tambours chan", "12": "Konk" }
 let photoMap = {}; // { "jean dupont": "https://.../photos/jean-dupont.jpg" }
 let paradeDate = ''; // date du défilé au format ISO (YYYY-MM-DD), gérée par l'organisateur
+let paradeName = ''; // nom du déboulé (facultatif), géré par l'organisateur
 let confirmed = {};  // présences confirmées pour la date du déboulé actuelle : { "nom normalisé": true }
 let condensedView = false; // true = plan des présents (absents en pointillé à leur place)
 let dayPlan = {};          // déplacements du jour (plan des présents) : { "nom normalisé": {r,c} }, liés à la date du déboulé
@@ -931,12 +933,18 @@ function formatParadeDate(iso){
 }
 
 function renderParadeDateBanner(){
-  const text = paradeDate ? `Déboulé du ${formatParadeDate(paradeDate)}` : '';
+  // Avec un nom : « Nom · 25 octobre 2026 » ; sans nom : « Déboulé du 25 octobre 2026 »
+  let text = '';
+  if(paradeName){
+    text = paradeDate ? `${paradeName} · ${formatParadeDate(paradeDate)}` : paradeName;
+  } else if(paradeDate){
+    text = `Déboulé du ${formatParadeDate(paradeDate)}`;
+  }
   const gateEl = document.getElementById('gate-parade-date');
   if(gateEl) gateEl.textContent = text;
   // Au-dessus de la grille : remplace "TÊTE DU CORTÈGE" par la date dès qu'elle est définie.
   const frontLineEl = document.getElementById('front-line-banner');
-  if(frontLineEl) frontLineEl.textContent = (text || 'TÊTE DU CORTÈGE') + ((condensedView && paradeDate) ? ' · PLAN DES PRÉSENTS' : '');
+  if(frontLineEl) frontLineEl.textContent = (text || 'TÊTE DU CORTÈGE') + ((condensedView && (paradeDate || paradeName)) ? ' · PLAN DES PRÉSENTS' : '');
 }
 
 // ------------------------------------------------------------
@@ -1084,6 +1092,7 @@ async function loadAllData(){
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
     applyRowInstruments();
     paradeDate = data.paradeDate || '';
+    paradeName = data.paradeName || '';
     dayPlan = {};
     if(data.dayPlan && typeof data.dayPlan === 'object'){ Object.keys(data.dayPlan).forEach(k => { const v = data.dayPlan[k]; if(v && v.r && v.c) dayPlan[k] = { r:Number(v.r), c:Number(v.c) }; }); }
     confirmed = {};
@@ -1633,14 +1642,16 @@ document.getElementById('roster-bulk-btn').addEventListener('click', async () =>
 // ------------------------------------------------------------
 document.getElementById('paradedate-save-btn').addEventListener('click', async () => {
   const val = document.getElementById('paradedate-input').value;
+  const nameVal = document.getElementById('paradename-input').value.trim();
   try {
-    const result = await apiPost({ action:'setParadeDate', date: val, password: organizerPassword });
+    const result = await apiPost({ action:'setParadeDate', date: val, name: nameVal, password: organizerPassword });
     if(result.ok){
       paradeDate = val;
+      paradeName = nameVal;
       renderParadeDateBanner();
       await loadAllData();
       refreshAll();
-      showToast('Date du défilé mise à jour.');
+      showToast('Date et nom du déboulé mis à jour.');
     } else {
       showToast(result.error || "Erreur d'enregistrement.");
     }
@@ -1842,7 +1853,7 @@ async function loadGrid(){
   if(isOrganizer){
     populateRowLabelSelect();
     populateRowManageSelects();
-    document.getElementById('paradedate-input').value = paradeDate;
+    document.getElementById('paradedate-input').value = paradeDate; document.getElementById('paradename-input').value = paradeName;
   }
 }
 
@@ -2516,7 +2527,7 @@ async function submitOrgaInline(){
       document.getElementById('roster-block').style.display = 'block';
       renderRoster();
       document.getElementById('paradedate-block').style.display = 'block';
-      document.getElementById('paradedate-input').value = paradeDate;
+      document.getElementById('paradedate-input').value = paradeDate; document.getElementById('paradename-input').value = paradeName;
       document.getElementById('codesec-block').style.display = 'block';
       applyCodeMode();
       document.getElementById('rowlabel-block').style.display = 'block';
@@ -2846,7 +2857,7 @@ function openApp(asOrganizer){
     document.getElementById('roster-block').style.display = 'block';
     renderRoster();
     document.getElementById('paradedate-block').style.display = 'block';
-    document.getElementById('paradedate-input').value = paradeDate;
+    document.getElementById('paradedate-input').value = paradeDate; document.getElementById('paradename-input').value = paradeName;
     document.getElementById('codesec-block').style.display = 'block';
     document.getElementById('rowlabel-block').style.display = 'block';
     document.getElementById('reset-block').style.display = 'block';
