@@ -471,6 +471,11 @@
       <input type="text" id="rep-search-input" placeholder="Rechercher un musicien…" autocomplete="off" style="margin-top:8px;">
       <div class="rep-list" id="rep-counts-list" style="margin-top:8px;"></div>
 
+      <p class="panel-title" style="margin-top:16px;">ATTRIBUER UN NOMBRE DE RÉPÉTITIONS À TOUS</p>
+      <input type="number" id="rep-setall-input" min="0" max="999" step="1" placeholder="Nombre de répétitions (ex. 10)" class="rep-input">
+      <button class="btn btn-secondary" id="rep-setall-btn">Attribuer à tous les musiciens</button>
+      <p class="empty-msg" style="margin-top:6px; color:var(--slate); font-size:0.75rem; line-height:1.5;">Chaque musicien passe à ce nombre exact, quel que soit son total actuel (le « sur … » s'aligne aussi). Les pointages suivants s'ajoutent à partir de là. Les répétitions et présences enregistrées ne sont pas supprimées.</p>
+
       <button class="btn btn-clear" id="rep-reset-btn" style="margin-top:16px;">🗑 Remettre les répétitions à zéro</button>
       <p class="empty-msg" style="margin-top:6px; color:var(--slate); font-size:0.75rem; line-height:1.5;">À faire après la phase de test : efface toutes les répétitions et toutes les présences (les compteurs repartent à 0). La grille, les musiciens et leurs codes ne changent pas.</p>
     </div>
@@ -3300,6 +3305,26 @@ document.getElementById('rep-close-btn').addEventListener('click', async () => {
       stopRepLive();
       showToast('Répétition clôturée.');
       refreshRepStats();
+    } else {
+      showToast(res.error || 'Erreur, réessaie.');
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
+
+// Attribue le même nombre de répétitions à tous les musiciens.
+document.getElementById('rep-setall-btn').addEventListener('click', async () => {
+  const raw = document.getElementById('rep-setall-input').value.trim();
+  const n = Number(raw);
+  if(raw === '' || !Number.isInteger(n) || n < 0 || n > 999){
+    showToast('Entre un nombre entier entre 0 et 999.');
+    return;
+  }
+  if(!confirm(`Attribuer ${plural(n, 'répétition')} à TOUS les musiciens ? Le total de chacun sera remplacé par ${n}, quel que soit son total actuel.`)) return;
+  try {
+    const res = await apiPost({ action:'setAllRepCount', count: n, password: organizerPassword });
+    if(res.ok){
+      await refreshRepStats();
+      showToast(`${plural(n, 'répétition')} attribuée${n > 1 ? 's' : ''} à tous les musiciens.`);
     } else {
       showToast(res.error || 'Erreur, réessaie.');
     }
