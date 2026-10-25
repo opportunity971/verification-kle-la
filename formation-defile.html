@@ -456,7 +456,8 @@
 
     <div id="rep-block" style="display:none;">
       <p class="panel-title">RÉPÉTITIONS</p>
-      <div id="rep-open-form">
+      <p class="rep-empty" id="rep-loading">Vérification des répétitions en cours…</p>
+      <div id="rep-open-form" style="display:none;">
         <input type="text" id="rep-label-input" placeholder="Libellé (optionnel) ex. Répétition générale" maxlength="80" autocomplete="off">
         <input type="date" id="rep-date-input" class="rep-input" style="margin-top:8px;">
         <button class="btn btn-save" id="rep-open-btn">▶ Ouvrir une répétition</button>
@@ -3177,8 +3178,14 @@ function initFromUrl(){
 }
 
 // ---- Organisateur : suivi en direct de la répétition ouverte ----
+// Le bouton « Ouvrir une répétition » n'est affiché qu'une fois l'état réel
+// des répétitions reçu du serveur (évite d'ouvrir une 2e répétition par erreur
+// pendant que la page n'a pas encore su qu'une répétition est déjà en cours).
 function onOrganizerReady(){
   document.getElementById('rep-date-input').value = localTodayISO();
+  document.getElementById('rep-open-form').style.display = 'none';
+  document.getElementById('rep-live').style.display = 'none';
+  document.getElementById('rep-loading').style.display = '';
   refreshRepStats();
 }
 
@@ -3189,12 +3196,17 @@ async function refreshRepStats(){
     if(res.ok){
       repStats = { total: res.total, sessions: res.sessions || [], counts: res.counts || {} };
       renderRepPanel();
+      return;
     }
-  } catch(err){ /* on réessaiera au prochain rafraîchissement */ }
+  } catch(err){ /* on réessaie ci-dessous */ }
+  // Tant qu'on n'a jamais reçu l'état réel, on réessaie toutes les 3 secondes.
+  if(!repStats && isOrganizer) setTimeout(refreshRepStats, 3000);
 }
 
 function renderRepPanel(){
   if(!repStats) return;
+  document.getElementById('rep-loading').style.display = 'none';
+  if(!repStats.sessions.some(s => s.open) && !repLive) document.getElementById('rep-open-form').style.display = '';
   const open = repStats.sessions.find(s => s.open);
   if(open && (!repLive || repLive.id !== open.id)) startRepLive(open, null);
   else if(!open && repLive) stopRepLive();
@@ -3262,6 +3274,7 @@ function startRepLive(session, first){
   repLive = { id: session.id, date: session.date, label: session.label || '', count: session.count || 0 };
   lastQrToken = (first && first.token) ? first.token : '';
   repPollTick = 0;
+  document.getElementById('rep-loading').style.display = 'none';
   document.getElementById('rep-open-form').style.display = 'none';
   document.getElementById('rep-live').style.display = 'block';
   updateRepLiveUi(first ? first.expiresIn : undefined);
@@ -3314,6 +3327,7 @@ document.getElementById('rep-open-btn').addEventListener('click', async () => {
   try {
     const res = await apiPost({ action:'openSession', date, label, password: organizerPassword });
     if(res.ok){
+      if(res.joined) showToast('Une répétition est déjà ouverte : tu la rejoins.');
       document.getElementById('rep-label-input').value = '';
       startRepLive(res.session, res);
       openQrOverlay();
