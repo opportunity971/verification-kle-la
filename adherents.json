@@ -1,12 +1,32 @@
 {
+  "becamel-chrislene": {
+    "nom": "BECAMEL",
+    "prenom": "Chrislene",
+    "infos": "cxT7qYndij31mUiiNRLcoIS197gpEZHX3bKVN2Va7ZYLpMakoZ5MK9pwZ1ti0B3oKdRs8bNQ36M96sw6z8wIOZTLATu3BZKSITJmwsQ3QeWjDS2keePypVF27r0uMBMH"
+  },
   "parfait-wilfrid": {
     "nom": "PARFAIT",
     "prenom": "Wilfrid",
-    "infos": "8SBuXdxcsWBYKoD4MRhGZMTXDZj+tFmJIDHWEq5VQKPAPDgqy/DIOPw5adjOb3qfLXJTFA19+PK/uBw+wOB3UI8gtl5PXP+hoVE0Q/WhCb1qFX+BYb22MFhD5RJEn5LENHHleLvX"
+    "infos": "nIl6IeeNJVy3ve5X02MnerdjIaVAR4piUViMRO24Yk0AMpaiJ8dGpjorv/CqpI9rrQ0PcrpLG5IF7pX/qUfP54367KtGkb5cmyIder5op4vzR9Pg1ypNPj9YGugvdtggIjNu3Tpk"
+  },
+  "bariolin-magaly": {
+    "nom": "BARIOLIN",
+    "prenom": "Magaly",
+    "infos": "Tf9CPgjFvX0dDktGDgraN2rAR66YDGx3jjCm/tmeUMJukibmuHjEzzClciwTAP2g2UzFdfb5TRK3/U5mjVuwE453cW6EnxoJmBcE18xTk6bBupVEr6dd5qrofb4Q3BlrHfp+9BQJ8bo9OQ=="
   },
   "lerine-ivana": {
     "nom": "LERINE",
     "prenom": "Ivana",
-    "infos": "hlw6Ll8hzUprFs1qb8ahTUgJKFW/elV6bI2/u+DpKgwKU3Sm39kxbLbsXuiRE80TMC8nAaXPrDr1csBCjirxqyQlhgwZSMYitTyh59g="
+    "infos": "DJOnKf3YgiW6Zh1d+BzxZqgk25ePyad+NVzNPW+FtB2q7U88FBkBKQ9RuC1PECgIFDA/Yy0N2yQ0H53ovPtgI0uE5SHjgnrjlY2tXz8="
+  },
+  "miatti-joseph": {
+    "nom": "MIATTI",
+    "prenom": "JOSEPH",
+    "infos": "g7L1NgvbvifntkHv70gC2iXWR7/vx2YN60IEoPv2Ym0qS/W9jE81zOY5REfTHDLaWZdwPED+aJBtwr3no+JRsLNYMl8wTHbNDbg958k="
+  },
+  "gedeon-premilia": {
+    "nom": "GEDEON",
+    "prenom": "PREMILIA",
+    "infos": "o7Q4JSpXQLp37cIABTT5VqFhoee+6a4JwgWTKwuOIqX5OfePd2abX3IuKJXlBwqmUwE5xy9yVpwsKPPnkCX1T+Uiuz7doZje/ZVcLwA="
   }
 }
