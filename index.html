@@ -160,7 +160,85 @@
     font-weight: 400;
     color: #999;
   }
+
+  /* ===== Confirmation de réception du badge ===== */
+  .bloc-remise {
+    display: none;
+    margin-top: 26px;
+    padding-top: 18px;
+    border-top: 1px solid var(--ligne);
+  }
+
+  .bloc-remise.visible {
+    display: block;
+  }
+
+  .lien-remise {
+    font: inherit;
+    font-size: 14px;
+    color: var(--encre);
+    background: none;
+    border: 1.5px solid var(--ligne);
+    border-radius: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+  }
+
+  .lien-remise:hover { border-color: var(--encre); }
+
+  .panneau-remise {
+    display: none;
+  }
+
+  .panneau-remise.visible {
+    display: block;
+  }
+
+  .panneau-remise p {
+    margin: 0 0 16px;
+  }
+
+  .zone-signature {
+    display: block;
+    width: 100%;
+    height: 150px;
+    background: white;
+    border: 1.5px dashed var(--ligne);
+    border-radius: 10px;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .actions-remise {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 16px 0 12px;
+  }
+
+  .bouton-principal, .bouton-secondaire {
+    font: inherit;
+    font-size: 15px;
+    border-radius: 10px;
+    padding: 12px 20px;
+    cursor: pointer;
+    border: 1.5px solid var(--encre);
+  }
+
+  .bouton-principal { background: var(--encre); color: white; }
+  .bouton-secondaire { background: white; color: var(--encre); }
+  .bouton-principal:disabled { opacity: 0.5; cursor: default; }
+
+  .message-remise {
+    font-size: 14px;
+    min-height: 20px;
+    margin-bottom: 14px;
+    color: var(--erreur);
+  }
+
+  .message-remise.succes { color: #1b6e3c; font-weight: 600; }
 </style>
+
 </head>
 <body>
 
@@ -176,6 +254,21 @@
       <input type="tel" inputmode="numeric" maxlength="1" autocomplete="off">
     </div>
     <div class="message-erreur" id="messageErreur"></div>
+    <div class="bloc-remise" id="blocRemise">
+      <button type="button" class="lien-remise" id="btnOuvrirRemise">J'ai reçu mon badge : confirmer la réception</button>
+    </div>
+  </div>
+
+  <div class="panneau-remise" id="panneauRemise">
+    <h1>Confirmer la réception de mon badge</h1>
+    <p class="sous-texte">Signez dans le cadre ci-dessous pour confirmer que vous avez bien reçu votre badge. Un récépissé vous sera envoyé par mail.</p>
+    <canvas class="zone-signature" id="zoneSignature"></canvas>
+    <div class="actions-remise">
+      <button type="button" class="bouton-secondaire" id="btnEffacerSignature">Effacer</button>
+      <button type="button" class="bouton-principal" id="btnValiderRemise">Valider</button>
+    </div>
+    <div class="message-remise" id="messageRemise"></div>
+    <button type="button" class="lien-remise" id="btnFermerRemise">Retour</button>
   </div>
 
   <div class="resultat" id="resultat">
@@ -312,6 +405,150 @@
       }
     }
   }
+
+  // ====== Confirmation de réception du badge (signature + récépissé par mail) ======
+  // Adresse de l'application web Google (elle se termine par /exec). Tant qu'elle est
+  // vide, cette fonction est désactivée et le site se comporte exactement comme avant.
+  const URL_REMISE = "https://script.google.com/macros/s/AKfycby7NdUywO_3f1vXEelii-c39pvHb3S1lWr9N7ZudHlOnciVGq_mAoxTZIDYkdj3kqPI/exec";
+
+  const blocRemise = document.getElementById('blocRemise');
+  const panneauRemise = document.getElementById('panneauRemise');
+  const zoneSignature = document.getElementById('zoneSignature');
+  const messageRemise = document.getElementById('messageRemise');
+  const btnValiderRemise = document.getElementById('btnValiderRemise');
+  let ctxSignature = null;
+  let enTrain = false;
+  let aSigne = false;
+
+  // La clé du QR code ne quitte jamais le téléphone : on n'envoie que son empreinte
+  // (SHA-256 de "remise:" + clé), qui prouve qu'on a le badge sans révéler la clé
+  // qui déchiffre les infos d'urgence.
+  async function preuveBadge() {
+    const octets = new TextEncoder().encode('remise:' + clePersonnelle);
+    const empreinte = await crypto.subtle.digest('SHA-256', octets);
+    return Array.from(new Uint8Array(empreinte)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Le bouton n'apparaît que si le badge n'a pas encore été confirmé.
+  async function verifierStatutRemise() {
+    if (!URL_REMISE || !identifiant || !clePersonnelle || !window.crypto || !crypto.subtle) return;
+    try {
+      const preuve = await preuveBadge();
+      const reponse = await fetch(URL_REMISE + '?action=statut&id=' + encodeURIComponent(identifiant)
+        + '&preuve=' + preuve);
+      const donnees = await reponse.json();
+      if (donnees && donnees.ok && donnees.remis === false) blocRemise.classList.add('visible');
+    } catch (erreur) {
+      // En cas de souci réseau, le site continue de fonctionner comme avant.
+    }
+  }
+
+  function preparerSignature() {
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    zoneSignature.width = zoneSignature.clientWidth * ratio;
+    zoneSignature.height = zoneSignature.clientHeight * ratio;
+    ctxSignature = zoneSignature.getContext('2d');
+    ctxSignature.scale(ratio, ratio);
+    ctxSignature.lineWidth = 2.2;
+    ctxSignature.lineCap = 'round';
+    ctxSignature.lineJoin = 'round';
+    ctxSignature.strokeStyle = '#111111';
+    aSigne = false;
+  }
+
+  function positionDansSignature(evenement) {
+    const rect = zoneSignature.getBoundingClientRect();
+    return { x: evenement.clientX - rect.left, y: evenement.clientY - rect.top };
+  }
+
+  zoneSignature.addEventListener('pointerdown', (e) => {
+    if (!ctxSignature) return;
+    zoneSignature.setPointerCapture(e.pointerId);
+    enTrain = true;
+    aSigne = true;
+    const p = positionDansSignature(e);
+    ctxSignature.beginPath();
+    ctxSignature.moveTo(p.x, p.y);
+    ctxSignature.lineTo(p.x + 0.01, p.y);
+    ctxSignature.stroke();
+    e.preventDefault();
+  });
+
+  zoneSignature.addEventListener('pointermove', (e) => {
+    if (!enTrain) return;
+    const p = positionDansSignature(e);
+    ctxSignature.lineTo(p.x, p.y);
+    ctxSignature.stroke();
+    e.preventDefault();
+  });
+
+  ['pointerup', 'pointercancel'].forEach(nom =>
+    zoneSignature.addEventListener(nom, () => { enTrain = false; }));
+
+  function afficherMessageRemise(texte, succes) {
+    messageRemise.textContent = texte;
+    messageRemise.classList.toggle('succes', !!succes);
+  }
+
+  document.getElementById('btnOuvrirRemise').addEventListener('click', () => {
+    formulaire.classList.add('masque');
+    panneauRemise.classList.add('visible');
+    afficherMessageRemise('');
+    btnValiderRemise.disabled = false;
+    preparerSignature();
+  });
+
+  document.getElementById('btnEffacerSignature').addEventListener('click', preparerSignature);
+
+  document.getElementById('btnFermerRemise').addEventListener('click', () => {
+    panneauRemise.classList.remove('visible');
+    formulaire.classList.remove('masque');
+    champs[0].focus();
+  });
+
+  btnValiderRemise.addEventListener('click', async () => {
+    if (!aSigne) {
+      afficherMessageRemise('Merci de signer dans le cadre.');
+      return;
+    }
+    btnValiderRemise.disabled = true;
+    afficherMessageRemise('Envoi en cours…');
+    try {
+      const reponse = await fetch(URL_REMISE, {
+        method: 'POST',
+        // text/plain : évite la pré-vérification CORS que Google Apps Script ne gère pas
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'confirmer',
+          id: identifiant,
+          preuve: await preuveBadge(),
+          signature: zoneSignature.toDataURL('image/png')
+        })
+      });
+      const donnees = await reponse.json();
+      if (donnees && donnees.ok) {
+        blocRemise.classList.remove('visible');
+        if (donnees.mail === 'oui') {
+          afficherMessageRemise('Merci ! Votre récépissé vient de vous être envoyé par mail.', true);
+        } else if (donnees.mail === 'en attente') {
+          afficherMessageRemise('Merci ! Réception enregistrée. Votre récépissé vous sera envoyé par mail sous peu.', true);
+        } else {
+          afficherMessageRemise('Merci ! Réception enregistrée. Aucune adresse mail connue : le récépissé ne peut pas vous être envoyé.', true);
+        }
+      } else if (donnees && donnees.deja) {
+        blocRemise.classList.remove('visible');
+        afficherMessageRemise('La réception de ce badge a déjà été confirmée.', true);
+      } else {
+        afficherMessageRemise("Impossible d'enregistrer la confirmation. Réessayez ou contactez l'association.");
+        btnValiderRemise.disabled = false;
+      }
+    } catch (erreur) {
+      afficherMessageRemise('Connexion impossible. Vérifiez votre réseau et réessayez.');
+      btnValiderRemise.disabled = false;
+    }
+  });
+
+  verifierStatutRemise();
 
   champs[0].focus();
 </script>
