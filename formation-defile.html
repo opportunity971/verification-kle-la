@@ -110,7 +110,6 @@
   .formation{ position:relative; display:flex; flex-direction:column; gap:7px; flex:0 0 454px; width:454px; min-width:454px; max-width:454px; margin: 0 auto; } /* largeur FIXE : la grille a exactement la même taille sur PC et téléphone, donc les silhouettes libres restent pile à leur place */
   .row{ display:grid; grid-template-columns: 26px repeat(4, 1fr); gap:9px; align-items:center; }
   .row{ position:relative; }
-  .row-num-copy{ position:absolute; top:50%; transform:translateY(-50%); width:26px; pointer-events:none; }
   .row.r5{ grid-template-columns: 26px repeat(5, 98px); } /* rangée à 5 places : la 5e dépasse à droite, les 4 autres ne bougent pas */
   .row-num{ position:relative; z-index:3; font-size:0.7rem; color: var(--slate); text-align:right; font-variant-numeric: tabular-nums; font-weight:600; }
   .row-group{ display:flex; flex-direction:column; gap:3px; }
@@ -1247,13 +1246,6 @@ function buildGridDOM(){
       if(fiveRows.has(r) && Number(fiveShift[r])) pos.style.left = Number(fiveShift[r]) + 'px'; /* seules les silhouettes bougent, le numéro reste en place */
       pos.addEventListener('click', () => selectPos(r,c));
       rowEl.appendChild(pos);
-    }
-    if(fiveRows.has(r) && Number(fiveShift[r])){
-      // numéro répété de chaque côté du bloc décalé (le numéro fixe à gauche reste en place)
-      const sh = Number(fiveShift[r]);
-      const mk = (left, align) => { const n = document.createElement('div'); n.className = 'row-num row-num-copy'; n.textContent = r; n.style.left = left + 'px'; n.style.textAlign = align; return n; };
-      rowEl.appendChild(mk(sh + 9, 'right'));
-      rowEl.appendChild(mk(sh + 565, 'left'));
     }
     group.appendChild(rowEl);
     container.appendChild(group);
