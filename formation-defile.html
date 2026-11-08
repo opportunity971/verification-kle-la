@@ -107,7 +107,7 @@
   .main-header h2{ margin:0; font-size:1.1rem; font-weight:700; color: var(--jaune); }
   .direction-hint{ font-size:0.76rem; color: var(--slate); }
 
-  .formation{ position:relative; display:flex; flex-direction:column; gap:7px; min-width: 420px; max-width:454px; margin: 0 auto; }
+  .formation{ position:relative; display:flex; flex-direction:column; gap:7px; flex:0 0 454px; width:454px; min-width:454px; max-width:454px; margin: 0 auto; } /* largeur FIXE : la grille a exactement la même taille sur PC et téléphone, donc les silhouettes libres restent pile à leur place */
   .row{ display:grid; grid-template-columns: 26px repeat(4, 1fr); gap:9px; align-items:center; }
   .row-num{ font-size:0.7rem; color: var(--slate); text-align:right; font-variant-numeric: tabular-nums; font-weight:600; }
   .row-group{ display:flex; flex-direction:column; gap:3px; }
@@ -192,8 +192,10 @@
   .pos.free{ position:absolute; width:90px; pointer-events:auto; }
   .organizer-view .pos.free{ cursor:grab; touch-action:none; outline:1px dashed rgba(255,201,60,0.55); outline-offset:-4px; border-radius:50%; }
   .pos.removed{ visibility: hidden; }
-  .organizer-view .pos.removed{ visibility: visible; cursor:pointer; }
-  .organizer-view .pos.removed:hover svg{ filter: drop-shadow(0 0 4px rgba(255,201,60,0.6)); }
+  /* Silhouette supprimée : invisible pour tout le monde (place vide). L'organisateur peut les faire
+     réapparaître en pointillé avec le bouton « Voir les silhouettes supprimées » pour en restaurer une. */
+  .organizer-view.show-removed .pos.removed{ visibility: visible; cursor:pointer; }
+  .organizer-view.show-removed .pos.removed:hover svg{ filter: drop-shadow(0 0 4px rgba(255,201,60,0.6)); }
 
   .front-line{ text-align:center; font-size:1.15rem; color: var(--jaune); letter-spacing: 0.06em; font-weight:700; text-transform:uppercase; padding-bottom:8px; border-bottom: 3px dashed rgba(255,201,60,0.3); margin-bottom:4px; }
 
@@ -566,6 +568,7 @@
       <p class="panel-title">SILHOUETTES LIBRES</p>
       <button class="btn btn-save" id="add-free-btn">➕ Ajouter une silhouette</button>
       <p class="empty-msg" style="margin:6px 0 16px;">La silhouette apparaît au milieu de l'écran : fais-la glisser où tu veux (solistes, konk…). Clique dessus pour lui donner un instrument ou un musicien.</p>
+      <button class="btn btn-secondary" id="toggle-removed-btn" style="margin-top:0; margin-bottom:16px;">👁 Voir les silhouettes supprimées</button>
       <p class="panel-title">GESTION DES RANGÉES</p>
       <label for="insert-row-select">Insérer une nouvelle rangée avant :</label>
       <select id="insert-row-select"></select>
@@ -2758,6 +2761,24 @@ async function removeFreeSilhouette(r){
   } catch(err){ showToast('Erreur réseau, réessaie.'); }
 }
 document.getElementById('add-free-btn').addEventListener('click', addFreeSilhouette);
+
+// Silhouettes supprimées : invisibles par défaut (la place reste vide). Ce bouton les fait réapparaître
+// en pointillé pour pouvoir en restaurer une ; le choix est retenu sur cet appareil.
+const SHOW_REMOVED_KEY = 'klelamass_show_removed_v1';
+function applyShowRemoved(on){
+  document.getElementById('main-layout').classList.toggle('show-removed', on);
+  document.getElementById('toggle-removed-btn').textContent = on ? '🙈 Masquer les silhouettes supprimées' : '👁 Voir les silhouettes supprimées';
+}
+(function(){
+  let on = false;
+  try { on = localStorage.getItem(SHOW_REMOVED_KEY) === '1'; } catch(err){}
+  applyShowRemoved(on);
+  document.getElementById('toggle-removed-btn').addEventListener('click', () => {
+    const next = !document.getElementById('main-layout').classList.contains('show-removed');
+    applyShowRemoved(next);
+    try { localStorage.setItem(SHOW_REMOVED_KEY, next ? '1' : '0'); } catch(err){}
+  });
+})();
 
 const ZOOM_MIN = 40, ZOOM_MAX = 200, ZOOM_STEP = 5;
 const PINCH_DAMPING = 0.5; // 1 = sensibilité brute, plus petit = moins sensible
