@@ -109,6 +109,7 @@
 
   .formation{ position:relative; display:flex; flex-direction:column; gap:7px; flex:0 0 454px; width:454px; min-width:454px; max-width:454px; margin: 0 auto; } /* largeur FIXE : la grille a exactement la même taille sur PC et téléphone, donc les silhouettes libres restent pile à leur place */
   .row{ display:grid; grid-template-columns: 26px repeat(4, 1fr); gap:9px; align-items:center; }
+  .row.r5{ grid-template-columns: 26px repeat(5, 98px); } /* rangée à 5 places : la 5e dépasse à droite, les 4 autres ne bougent pas */
   .row-num{ font-size:0.7rem; color: var(--slate); text-align:right; font-variant-numeric: tabular-nums; font-weight:600; }
   .row-group{ display:flex; flex-direction:column; gap:3px; }
   .row-label-line{ display:flex; align-items:center; justify-content:center; gap:6px; padding-left:26px; }
@@ -570,6 +571,9 @@
       <p class="empty-msg" style="margin:6px 0 16px;">La silhouette apparaît au milieu de l'écran : fais-la glisser où tu veux (solistes, konk…). Clique dessus pour lui donner un instrument ou un musicien.</p>
       <button class="btn btn-secondary" id="toggle-removed-btn" style="margin-top:0; margin-bottom:16px;">👁 Voir les silhouettes supprimées</button>
       <p class="panel-title">GESTION DES RANGÉES</p>
+      <label for="size-row-select">Nombre de places d'une rangée :</label>
+      <select id="size-row-select"></select>
+      <button class="btn btn-save" id="size-row-btn" style="margin-bottom:14px;"></button>
       <label for="insert-row-select">Insérer une nouvelle rangée avant :</label>
       <select id="insert-row-select"></select>
       <button class="btn btn-save" id="insert-row-btn">Insérer ici</button>
@@ -896,6 +900,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxPsziKBTl1xVIVGtFb5rbB
 const PHOTOS_URL = 'https://raw.githubusercontent.com/opportunity971/verification-kle-la/main/photos.json';
 
 let grid = {};
+let fiveRows = new Set(); // rangées qui ont une 5e place
+const colsOf = r => COLS + (fiveRows.has(Number(r)) ? 1 : 0);
 let freeList = [];      // silhouettes libres ajoutées par l'organisateur : [{ id, x, y }]
 let freeSig = '';
 const FREE_BASE = 1000;
@@ -1106,6 +1112,7 @@ async function loadAllData(){
     const data = await apiGet();
     grid = data.grid || emptyGrid();
     freeList = Array.isArray(data.free) ? data.free : [];
+    fiveRows = new Set((Array.isArray(data.five) ? data.five : []).map(Number));
     roster = data.roster || [];
     rowLabels = data.labels || {};
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
@@ -1125,6 +1132,7 @@ async function loadAllData(){
   } catch(err){
     grid = emptyGrid();
     freeList = [];
+    fiveRows = new Set();
     roster = [];
     rowLabels = {};
     confirmed = {};
@@ -1140,7 +1148,7 @@ function applyRowInstruments(){
   for(let r=1; r<=ROWS; r++){
     const instr = rowInstrumentOf(String(r));
     if(!instr) continue;
-    for(let c=1; c<=COLS; c++){
+    for(let c=1; c<=colsOf(r); c++){
       const cell = grid[keyOf(r,c)];
       if(cell && !cell.removed && !cell.name && !cell.instrument) cell.instrument = instr;
     }
@@ -1212,12 +1220,12 @@ function buildGridDOM(){
     group.appendChild(labelLine);
 
     const rowEl = document.createElement('div');
-    rowEl.className = 'row';
+    rowEl.className = 'row' + (fiveRows.has(r) ? ' r5' : '');
     const rowNum = document.createElement('div');
     rowNum.className = 'row-num';
     rowNum.textContent = r;
     rowEl.appendChild(rowNum);
-    for(let c=1; c<=COLS; c++){
+    for(let c=1; c<=colsOf(r); c++){
       const pos = document.createElement('div');
       pos.className = 'pos';
       pos.dataset.r = r;
@@ -1454,7 +1462,7 @@ function refreshAll(){
   try{ setTimeout(layoutFree, 0); setTimeout(layoutFree, 400); }catch(_){}
   computeDayView();
   syncFreeDOM();
-  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++) refreshCell(r,c);
+  for(let r=1;r<=ROWS;r++) for(let c=1;c<=colsOf(r);c++) refreshCell(r,c);
   freeList.forEach(f => refreshCell(FREE_BASE + f.id, 1));
   updateStats();
   applyCondensedLayout();
@@ -1465,8 +1473,8 @@ function updateStats(){
   const blocked = Object.values(grid).filter(d => d.blocked).length;
   document.getElementById('stat-filled').textContent = filled;
   document.getElementById('stat-blocked').textContent = blocked;
-  document.getElementById('stat-total').textContent = ROWS * COLS + freeList.length;
-  document.getElementById('intro-sub').textContent = `${ROWS * COLS} places · ${ROWS} rangées de ${COLS}. Clique une place libre de ton instrument pour réserver.`;
+  document.getElementById('stat-total').textContent = ROWS * COLS + fiveRows.size + freeList.length;
+  document.getElementById('intro-sub').textContent = `${ROWS * COLS + fiveRows.size} places · ${ROWS} rangées de ${COLS}${fiveRows.size ? ' (' + fiveRows.size + ' à ' + (COLS+1) + ')' : ''}. Clique une place libre de ton instrument pour réserver.`;
 
   // Présents confirmés pour le déboulé (visible seulement quand une date est définie)
   const confirmedRow = document.getElementById('confirmed-row');
@@ -1763,6 +1771,18 @@ function populateRowManageSelects(){
   optEnd.textContent = 'À la fin (après la dernière rangée)';
   insertSelect.appendChild(optEnd);
 
+  const sizeSelect = document.getElementById('size-row-select');
+  const keepSize = sizeSelect.value;
+  sizeSelect.innerHTML = '';
+  for(let r=1; r<=ROWS; r++){
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = `Rangée ${r} (${colsOf(r)} places)`;
+    sizeSelect.appendChild(opt);
+  }
+  if(keepSize) sizeSelect.value = keepSize;
+  updateSizeBtn();
+
   removeSelect.innerHTML = '';
   for(let r=1; r<=ROWS; r++){
     const opt = document.createElement('option');
@@ -1771,6 +1791,29 @@ function populateRowManageSelects(){
     removeSelect.appendChild(opt);
   }
 }
+
+function updateSizeBtn(){
+  const sel = document.getElementById('size-row-select');
+  const btn = document.getElementById('size-row-btn');
+  if(!sel || !btn || !sel.value) return;
+  btn.textContent = fiveRows.has(Number(sel.value)) ? `Remettre la rangée ${sel.value} à ${COLS} places` : `Passer la rangée ${sel.value} à ${COLS+1} places`;
+}
+document.getElementById('size-row-select').addEventListener('change', updateSizeBtn);
+document.getElementById('size-row-btn').addEventListener('click', async () => {
+  const r = Number(document.getElementById('size-row-select').value);
+  if(!r) return;
+  const size = fiveRows.has(r) ? COLS : COLS + 1;
+  try {
+    const result = await apiPost({ action:'setRowSize', row:r, size, password: organizerPassword });
+    if(result.ok){
+      await reloadAfterRowStructureChange();
+      document.getElementById('size-row-select').value = r; updateSizeBtn();
+      showToast(`Rangée ${r} : ${size} places.`);
+    } else {
+      showToast(result.error || "Erreur d'enregistrement.");
+    }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+});
 
 async function reloadAfterRowStructureChange(){
   selected = null;
