@@ -109,8 +109,10 @@
 
   .formation{ position:relative; display:flex; flex-direction:column; gap:7px; flex:0 0 454px; width:454px; min-width:454px; max-width:454px; margin: 0 auto; } /* largeur FIXE : la grille a exactement la même taille sur PC et téléphone, donc les silhouettes libres restent pile à leur place */
   .row{ display:grid; grid-template-columns: 26px repeat(4, 1fr); gap:9px; align-items:center; }
+  .row{ position:relative; }
+  .row-num-copy{ position:absolute; top:50%; transform:translateY(-50%); width:26px; pointer-events:none; }
   .row.r5{ grid-template-columns: 26px repeat(5, 98px); } /* rangée à 5 places : la 5e dépasse à droite, les 4 autres ne bougent pas */
-  .row-num{ font-size:0.7rem; color: var(--slate); text-align:right; font-variant-numeric: tabular-nums; font-weight:600; }
+  .row-num{ position:relative; z-index:3; font-size:0.7rem; color: var(--slate); text-align:right; font-variant-numeric: tabular-nums; font-weight:600; }
   .row-group{ display:flex; flex-direction:column; gap:3px; }
   .row-label-line{ display:flex; align-items:center; justify-content:center; gap:6px; padding-left:26px; }
   .row-label-line .row-label-text{ font-size:0.66rem; color: var(--jaune); font-weight:700; letter-spacing:0.03em; }
@@ -573,7 +575,16 @@
       <p class="panel-title">GESTION DES RANGÉES</p>
       <label for="size-row-select">Nombre de places d'une rangée :</label>
       <select id="size-row-select"></select>
-      <button class="btn btn-save" id="size-row-btn" style="margin-bottom:14px;"></button>
+      <button class="btn btn-save" id="size-row-btn"></button>
+      <div id="shift-block" style="margin:10px 0 14px;">
+        <label>Décaler le bloc de 5 de la rangée choisie :</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-secondary" id="shift-left-btn" style="margin:0;">◀ Gauche</button>
+          <button class="btn btn-secondary" id="shift-right-btn" style="margin:0;">Droite ▶</button>
+        </div>
+        <label style="display:flex; gap:6px; align-items:center; margin-top:6px;"><input type="checkbox" id="shift-all-chk"> Toutes les rangées de 5 ensemble</label>
+        <p class="empty-msg" style="margin:4px 0 0;">Chaque clic décale de 20 px. Le bloc se déplace d'un seul tenant.</p>
+      </div>
       <label for="insert-row-select">Insérer une nouvelle rangée avant :</label>
       <select id="insert-row-select"></select>
       <button class="btn btn-save" id="insert-row-btn">Insérer ici</button>
@@ -900,6 +911,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxPsziKBTl1xVIVGtFb5rbB
 const PHOTOS_URL = 'https://raw.githubusercontent.com/opportunity971/verification-kle-la/main/photos.json';
 
 let grid = {};
+let fiveShift = {}; // décalage horizontal (px) par rangée à 5 places
 let fiveRows = new Set(); // rangées qui ont une 5e place
 const colsOf = r => COLS + (fiveRows.has(Number(r)) ? 1 : 0);
 let freeList = [];      // silhouettes libres ajoutées par l'organisateur : [{ id, x, y }]
@@ -1113,6 +1125,7 @@ async function loadAllData(){
     grid = data.grid || emptyGrid();
     freeList = Array.isArray(data.free) ? data.free : [];
     fiveRows = new Set((Array.isArray(data.five) ? data.five : []).map(Number));
+    fiveShift = (data.fiveShift && typeof data.fiveShift === 'object') ? data.fiveShift : {};
     roster = data.roster || [];
     rowLabels = data.labels || {};
     if(typeof data.rows === 'number' && data.rows > 0) ROWS = data.rows;
@@ -1133,6 +1146,7 @@ async function loadAllData(){
     grid = emptyGrid();
     freeList = [];
     fiveRows = new Set();
+    fiveShift = {};
     roster = [];
     rowLabels = {};
     confirmed = {};
@@ -1230,8 +1244,16 @@ function buildGridDOM(){
       pos.className = 'pos';
       pos.dataset.r = r;
       pos.dataset.c = c;
+      if(fiveRows.has(r) && Number(fiveShift[r])) pos.style.left = Number(fiveShift[r]) + 'px'; /* seules les silhouettes bougent, le numéro reste en place */
       pos.addEventListener('click', () => selectPos(r,c));
       rowEl.appendChild(pos);
+    }
+    if(fiveRows.has(r) && Number(fiveShift[r])){
+      // numéro répété de chaque côté du bloc décalé (le numéro fixe à gauche reste en place)
+      const sh = Number(fiveShift[r]);
+      const mk = (left, align) => { const n = document.createElement('div'); n.className = 'row-num row-num-copy'; n.textContent = r; n.style.left = left + 'px'; n.style.textAlign = align; return n; };
+      rowEl.appendChild(mk(sh + 9, 'right'));
+      rowEl.appendChild(mk(sh + 565, 'left'));
     }
     group.appendChild(rowEl);
     container.appendChild(group);
@@ -1799,6 +1821,23 @@ function updateSizeBtn(){
   btn.textContent = fiveRows.has(Number(sel.value)) ? `Remettre la rangée ${sel.value} à ${COLS} places` : `Passer la rangée ${sel.value} à ${COLS+1} places`;
 }
 document.getElementById('size-row-select').addEventListener('change', updateSizeBtn);
+async function shiftFive(dir){
+  const r = Number(document.getElementById('size-row-select').value);
+  const all = document.getElementById('shift-all-chk').checked;
+  if(!all && !fiveRows.has(r)){ showToast("Cette rangée n'a pas 5 places."); return; }
+  if(all && fiveRows.size === 0){ showToast('Aucune rangée à 5 places.'); return; }
+  const base = all ? (Number(fiveShift[[...fiveRows][0]]) || 0) : (Number(fiveShift[r]) || 0);
+  const offset = base + dir * 20;
+  try {
+    const result = await apiPost({ action:'setRowShift', row:r, all, offset, password: organizerPassword });
+    if(result.ok){
+      await reloadAfterRowStructureChange();
+      document.getElementById('size-row-select').value = r; updateSizeBtn();
+    } else { showToast(result.error || "Erreur d'enregistrement."); }
+  } catch(err){ showToast('Erreur réseau, réessaie.'); }
+}
+document.getElementById('shift-left-btn').addEventListener('click', () => shiftFive(-1));
+document.getElementById('shift-right-btn').addEventListener('click', () => shiftFive(1));
 document.getElementById('size-row-btn').addEventListener('click', async () => {
   const r = Number(document.getElementById('size-row-select').value);
   if(!r) return;
