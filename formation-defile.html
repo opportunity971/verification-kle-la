@@ -186,6 +186,9 @@
   .pos.move-target svg path, .pos.move-target svg circle{ stroke: var(--vert); }
   .pos.move-source::after{ content:''; position:absolute; inset:-3px; border:2px dashed var(--vert); border-radius:12px; pointer-events:none; }
   @keyframes moveTargetPulse{ 0%,100%{ opacity:0.6; } 50%{ opacity:1; } }
+  .organizer-view .pos:not(.free){ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+  .pos.swap-source{ transform:scale(1.15); z-index:5; }
+  .pos.swap-source::after{ content:''; position:absolute; inset:-3px; border:2px dashed var(--jaune); border-radius:12px; pointer-events:none; }
   .move-hint{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:60; background:var(--nuit-deep); color:var(--creme, #fff6e5); border:1.5px solid var(--vert); border-radius:999px; padding:9px 16px; font-size:0.85rem; display:flex; gap:12px; align-items:center; box-shadow:0 6px 20px rgba(0,0,0,0.45); max-width:92vw; }
   .move-hint button{ background:transparent; border:1px solid var(--slate); color:inherit; border-radius:999px; padding:3px 10px; cursor:pointer; font-size:0.8rem; }
   .btn-secondary.active{ border-color: var(--vert); color: var(--vert); }
@@ -932,6 +935,8 @@ let confirmed = {};  // présences confirmées pour la date du déboulé actuell
 let condensedView = false; // true = plan des présents (absents en pointillé à leur place)
 let dayPlan = {};          // déplacements du jour (plan des présents) : { "nom normalisé": {r,c} }, liés à la date du déboulé
 let dayView = {};          // place "r-c" -> musicien présent affiché à cette place (calculé)
+let swapSrc = null;        // organisateur : place choisie par appui long pour être échangée { r, c }
+let swapJustArmed = false;
 let moveSrc = null;        // organisateur en train de déplacer un présent : { name }
 let selected = null;
 let isOrganizer = false;
@@ -1247,7 +1252,8 @@ function buildGridDOM(){
       pos.dataset.r = r;
       pos.dataset.c = c;
       if(fiveRows.has(r) && Number(fiveShift[r])) pos.style.left = Number(fiveShift[r]) + 'px'; /* seules les silhouettes bougent, le numéro reste en place */
-      pos.addEventListener('click', () => selectPos(r,c));
+      pos.addEventListener('click', () => seatClick(r,c));
+      pos.addEventListener('pointerdown', (e) => seatPressStart(e, r, c));
       rowEl.appendChild(pos);
     }
     group.appendChild(rowEl);
@@ -1275,6 +1281,7 @@ function refreshCell(r,c){
     if(!data.instrument) el.classList.add('blocked-empty');
   }
   if(data.removed) el.classList.add('removed');
+  if(swapSrc && swapSrc.r===r && swapSrc.c===c) el.classList.add('swap-source');
 
   if(data.ghost){
     el.classList.add('ghost');
@@ -2005,6 +2012,87 @@ async function loadGrid(){
 }
 
 let popupOpenedAt = 0;   // un léger décalage de page juste après l'ouverture de la bulle ne doit pas la refermer
+// ------------------------------------------------------------
+// Échange de deux places : appui long sur une place, puis clic sur l'autre
+// ------------------------------------------------------------
+const SWAP_LONGPRESS_MS = 700;   // durée d'appui (en millisecondes) pour choisir la place à échanger
+let swapPress = null;
+
+function seatPressStart(e, r, c){
+  if(!isOrganizer || condensedView || moveSrc) return;
+  if(e.pointerType === 'mouse' && e.button !== 0) return;
+  cancelSwapPress();
+  const d = { r, c, sx:e.clientX, sy:e.clientY, timer:null };
+  d.timer = setTimeout(() => {
+    if(swapPress !== d) return;
+    swapPress = null;
+    armSwap(r, c);
+  }, SWAP_LONGPRESS_MS);
+  swapPress = d;
+}
+function cancelSwapPress(){ if(swapPress){ clearTimeout(swapPress.timer); swapPress = null; } }
+document.addEventListener('pointermove', (e) => {
+  if(swapPress && Math.hypot(e.clientX - swapPress.sx, e.clientY - swapPress.sy) > 10) cancelSwapPress();
+});
+document.addEventListener('pointerup', cancelSwapPress, true);
+document.addEventListener('pointercancel', cancelSwapPress, true);
+
+function armSwap(r, c){
+  const d = grid[keyOf(r,c)] || {};
+  if(d.removed){ showToast('Cette silhouette est supprimée.'); return; }
+  swapSrc = { r, c };
+  swapJustArmed = true;           // le relâchement qui suit ne doit pas ouvrir la bulle
+  setTimeout(() => { swapJustArmed = false; }, 600);
+  try{ if(navigator.vibrate) navigator.vibrate(40); }catch(_){}
+  hideSeatPopup();
+  refreshAll();
+  updateSwapHint();
+}
+function cancelSwap(){ swapSrc = null; updateSwapHint(); refreshAll(); }
+
+function updateSwapHint(){
+  let hint = document.getElementById('swap-hint');
+  if(!swapSrc){ if(hint) hint.remove(); return; }
+  if(!hint){
+    hint = document.createElement('div'); hint.id = 'swap-hint'; hint.className = 'move-hint';
+    document.body.appendChild(hint);
+  }
+  const d = grid[keyOf(swapSrc.r, swapSrc.c)] || {};
+  hint.innerHTML = `<span>⇄ Touche la place à échanger avec <b></b></span><button type="button">Annuler</button>`;
+  hint.querySelector('b').textContent = d.name || ('rangée ' + swapSrc.r + ', place ' + swapSrc.c + ' (libre)');
+  hint.querySelector('button').addEventListener('click', cancelSwap);
+}
+
+function seatClick(r, c){
+  if(swapJustArmed){ swapJustArmed = false; return; }
+  if(swapSrc){
+    if(swapSrc.r === r && swapSrc.c === c){ cancelSwap(); return; }
+    doSwap(swapSrc, { r, c });
+    return;
+  }
+  selectPos(r, c);
+}
+
+async function doSwap(a, b){
+  const A = grid[keyOf(a.r,a.c)] || { instrument:'', name:'', blocked:false, removed:false };
+  const B = grid[keyOf(b.r,b.c)] || { instrument:'', name:'', blocked:false, removed:false };
+  if(B.removed || B.blocked || A.blocked){
+    showToast('Échange impossible : place bloquée ou supprimée.');
+    return;
+  }
+  if(!A.name && !B.name){ showToast('Les deux places sont libres.'); cancelSwap(); return; }
+  swapSrc = null; updateSwapHint();
+  // un musicien emporte son nom et son instrument ; une place libre garde son propre instrument imposé
+  const toA = B.name ? { i:B.instrument, n:B.name } : { i:A.instrument, n:'' };
+  const toB = A.name ? { i:A.instrument, n:A.name } : { i:B.instrument, n:'' };
+  const ok1 = await setCellRemote(a.r, a.c, toA.i, toA.n, !!A.blocked, false);
+  const ok2 = ok1 && await setCellRemote(b.r, b.c, toB.i, toB.n, !!B.blocked, false);
+  if(ok1 && ok2) showToast('Places échangées.');
+  else { showToast("L'échange a échoué à moitié : vérifie les deux places."); }
+  refreshAll();
+}
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && swapSrc) cancelSwap(); });
+
 function selectPos(r,c){
   if(condensedView){ condensedClick(r,c); return; }
   popupOpenedAt = Date.now();
@@ -2841,7 +2929,7 @@ function freePointerDown(e){
 // Une fois la silhouette saisie, on bloque le défilement de la page pendant qu'on la glisse.
 document.addEventListener('touchmove', (e) => { if(freeDrag && freeDrag.armed && e.cancelable) e.preventDefault(); }, { passive:false });
 // Pas de menu « clic droit / appui long » du navigateur sur une silhouette libre.
-document.addEventListener('contextmenu', (e) => { if(e.target.closest && e.target.closest('.pos.free')) e.preventDefault(); });
+document.addEventListener('contextmenu', (e) => { if(e.target.closest && e.target.closest('.pos')) e.preventDefault(); });
 document.addEventListener('pointermove', (e) => {
   if(!freeDrag) return;
   const dx = e.clientX - freeDrag.sx, dy = e.clientY - freeDrag.sy;
