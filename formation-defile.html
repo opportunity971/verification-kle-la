@@ -1131,6 +1131,7 @@ async function loadAllData(){
     const data = await apiGet();
     grid = data.grid || emptyGrid();
     freeList = Array.isArray(data.free) ? data.free : [];
+    if(pendingFree) freeList = freeList.map(f => pendingFree[f.id] ? Object.assign({}, f, pendingFree[f.id]) : f);
     fiveRows = new Set((Array.isArray(data.five) ? data.five : []).map(Number));
     fiveShift = (data.fiveShift && typeof data.fiveShift === 'object') ? data.fiveShift : {};
     roster = data.roster || [];
@@ -1889,10 +1890,27 @@ function freeShiftPlan(row, dir){
     .map(f => ({ id: f.id, x: f.x, y: Math.max(0, Math.round(f.y + dir * pitch)) }));
 }
 
-async function applyFreeShifts(list){
-  for(const s of list){
-    try { await apiPost({ action:'moveFree', id: s.id, x: s.x, y: s.y, password: organizerPassword }); } catch(err){}
+// Les nouvelles positions sont retenues tout de suite (affichage immédiat, sans attendre le serveur) ;
+// l'enregistrement se fait ensuite en arrière-plan : d'un seul coup (moveFreeMany), ou une par une si Code.gs n'est pas à jour.
+let pendingFree = null;
+function startFreeShifts(list){
+  if(!list.length) return;
+  pendingFree = pendingFree || {};
+  list.forEach(s => { pendingFree[s.id] = { x:s.x, y:s.y }; });
+  persistFreeShifts(list);
+}
+async function persistFreeShifts(list){
+  let done = false;
+  try {
+    const r = await apiPost({ action:'moveFreeMany', list, password: organizerPassword });
+    done = !!(r && r.ok);
+  } catch(err){}
+  if(!done){
+    for(const s of list){
+      try { await apiPost({ action:'moveFree', id: s.id, x: s.x, y: s.y, password: organizerPassword }); } catch(err){}
+    }
   }
+  list.forEach(s => { if(pendingFree) delete pendingFree[s.id]; });
 }
 
 async function reloadAfterRowStructureChange(){
@@ -1914,7 +1932,7 @@ document.getElementById('insert-row-btn').addEventListener('click', async () => 
     const shifts = freeShiftPlan(at, 1);
     const result = await apiPost({ action:'insertRow', at, password: organizerPassword });
     if(result.ok){
-      await applyFreeShifts(shifts);
+      startFreeShifts(shifts);
       await reloadAfterRowStructureChange();
       showToast(`Nouvelle rangée insérée en position ${at}.`);
     } else {
@@ -1930,7 +1948,7 @@ document.getElementById('remove-row-btn').addEventListener('click', async () => 
     const shifts = freeShiftPlan(at, -1);
     const result = await apiPost({ action:'removeRow', at, password: organizerPassword });
     if(result.ok){
-      await applyFreeShifts(shifts);
+      startFreeShifts(shifts);
       await reloadAfterRowStructureChange();
       showToast(`Rangée ${at} supprimée.`);
     } else {
