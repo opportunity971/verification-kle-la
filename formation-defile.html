@@ -1850,6 +1850,44 @@ document.getElementById('size-row-btn').addEventListener('click', async () => {
   } catch(err){ showToast('Erreur réseau, réessaie.'); }
 });
 
+// Les silhouettes libres sont posées à une hauteur fixe (en pixels) : quand une rangée est supprimée ou insérée,
+// les rangées se décalent mais pas elles, et elles se retrouvent les unes sur les autres. On calcule ici (AVANT le
+// changement, sur l'affichage actuel) de combien les silhouettes situées en dessous doivent suivre le mouvement.
+// dir = -1 : suppression de la rangée (celles en dessous remontent) ; dir = +1 : insertion (elles descendent).
+function freeShiftPlan(row, dir){
+  const groups = document.getElementById('formation').querySelectorAll('.row-group');
+  if(!groups.length || !freeList.length) return [];
+  const { k, w } = freeMetrics();
+  const GAP = 7; // espace entre deux rangées
+  let top, h, pitch;
+  if(row > groups.length){
+    // insertion tout en bas : « avant la rangée » = juste après la dernière
+    const last = groups[groups.length - 1];
+    top = last.offsetTop + last.offsetHeight + GAP; h = 0;
+  } else {
+    const ref = groups[Math.max(row, 1) - 1];
+    top = ref.offsetTop; h = ref.offsetHeight;
+  }
+  if(dir < 0){
+    pitch = (h + GAP) / k;
+  } else {
+    // une rangée neuve n'a pas d'étiquette : on prend la hauteur d'une rangée sans étiquette
+    const plain = Array.from(groups).find(g => !g.firstElementChild.textContent.trim()) || groups[0];
+    pitch = (plain.offsetHeight + GAP) / k;
+  }
+  const limit = dir < 0 ? (top + h / 2) / k : top / k;
+  const half = (w / k) / 2;
+  return freeList
+    .filter(f => f.y + half >= limit)
+    .map(f => ({ id: f.id, x: f.x, y: Math.max(0, Math.round(f.y + dir * pitch)) }));
+}
+
+async function applyFreeShifts(list){
+  for(const s of list){
+    try { await apiPost({ action:'moveFree', id: s.id, x: s.x, y: s.y, password: organizerPassword }); } catch(err){}
+  }
+}
+
 async function reloadAfterRowStructureChange(){
   selected = null;
   await loadAllData();
@@ -1866,8 +1904,10 @@ async function reloadAfterRowStructureChange(){
 document.getElementById('insert-row-btn').addEventListener('click', async () => {
   const at = Number(document.getElementById('insert-row-select').value);
   try {
+    const shifts = freeShiftPlan(at, 1);
     const result = await apiPost({ action:'insertRow', at, password: organizerPassword });
     if(result.ok){
+      await applyFreeShifts(shifts);
       await reloadAfterRowStructureChange();
       showToast(`Nouvelle rangée insérée en position ${at}.`);
     } else {
@@ -1880,8 +1920,10 @@ document.getElementById('remove-row-btn').addEventListener('click', async () => 
   const at = Number(document.getElementById('remove-row-select').value);
   if(!confirm(`Supprimer définitivement la rangée ${at} et ses ${COLS} places ? Les rangées suivantes seront renumérotées.`)) return;
   try {
+    const shifts = freeShiftPlan(at, -1);
     const result = await apiPost({ action:'removeRow', at, password: organizerPassword });
     if(result.ok){
+      await applyFreeShifts(shifts);
       await reloadAfterRowStructureChange();
       showToast(`Rangée ${at} supprimée.`);
     } else {
