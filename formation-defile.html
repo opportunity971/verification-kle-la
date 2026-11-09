@@ -192,7 +192,10 @@
 
   #free-layer{ position:absolute; left:-300px; top:0; width:calc(100% + 600px); height:100%; pointer-events:none; z-index:3; }
   .pos.free{ position:absolute; width:90px; pointer-events:auto; }
-  .organizer-view .pos.free{ cursor:grab; touch-action:none; outline:1px dashed rgba(255,201,60,0.55); outline-offset:-4px; border-radius:50%; }
+  .organizer-view .pos.free{ cursor:grab; outline:1px dashed rgba(255,201,60,0.55); outline-offset:-4px; border-radius:50%; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+  /* Silhouette libre « saisie » après un appui long (téléphone) : prête à être glissée */
+  .pos.free.free-armed{ transform:scale(1.18); z-index:5; }
+  .pos.free.free-armed::before{ content:''; position:absolute; inset:-6px; border-radius:50%; background:rgba(29,190,121,0.25); box-shadow:0 0 0 3px var(--vert), 0 0 16px rgba(29,190,121,0.85); pointer-events:none; }
   .pos.removed{ visibility: hidden; }
   /* Silhouette supprimée : invisible pour tout le monde (place vide). L'organisateur peut les faire
      réapparaître en pointillé avec le bouton « Voir les silhouettes supprimées » pour en restaurer une. */
@@ -1264,6 +1267,7 @@ function refreshCell(r,c){
   const el = document.querySelector(`.pos[data-r="${r}"][data-c="${c}"]`);
   const data = cellDataFor(r,c);
   el.className = el.dataset.free ? 'pos free' : 'pos';
+  if(freeDrag && freeDrag.armed && freeDrag.el === el) el.classList.add('free-armed');
   if(data.instrument) el.classList.add(data.instrument);
   if(data.name) el.classList.add('taken');
   if(data.blocked){
@@ -2762,18 +2766,45 @@ function syncFreeDOM(){
   if(!document.getElementById('free-layer') || freeSignature() !== freeSig) buildFreeDOM();
 }
 
+// Sur téléphone (doigt), une silhouette libre ne se « saisit » qu'après un APPUI LONG : tant que le doigt n'est pas
+// resté immobile ce temps-là, il fait simplement défiler la page, même s'il passe par-dessus une silhouette.
+// Une fois saisie (halo vert + vibration), elle suit le doigt. À la souris (PC), on glisse directement comme avant.
+const FREE_LONGPRESS_MS = 800;   // durée d'appui avant de pouvoir déplacer, en millisecondes (1000 = 1 seconde)
+function cancelFreePress(){
+  if(freeDrag && freeDrag.timer){ clearTimeout(freeDrag.timer); }
+  freeDrag = null;
+}
 function freePointerDown(e){
   if(!isOrganizer) return;
   const el = e.currentTarget;
+  const touch = e.pointerType === 'touch';
   freeDrag = { el, id: Number(el.dataset.free), sx: e.clientX, sy: e.clientY,
                ox: parseFloat(el.style.left) || 0, oy: parseFloat(el.style.top) || 0,
-               scale: zoomLevel / 100, moved: false };
-  try { el.setPointerCapture(e.pointerId); } catch(_){}
-  e.preventDefault();
+               scale: zoomLevel / 100, moved: false, touch, armed: !touch, timer: null, pid: e.pointerId };
+  if(touch){
+    const d = freeDrag;
+    d.timer = setTimeout(() => {
+      if(freeDrag !== d) return;
+      d.timer = null; d.armed = true;
+      el.classList.add('free-armed');
+      try { el.setPointerCapture(d.pid); } catch(_){}
+      try { if(navigator.vibrate) navigator.vibrate(40); } catch(_){}
+      hideSeatPopup();
+    }, FREE_LONGPRESS_MS);
+  } else {
+    try { el.setPointerCapture(e.pointerId); } catch(_){}
+    e.preventDefault();
+  }
 }
+// Une fois la silhouette saisie, on bloque le défilement de la page pendant qu'on la glisse.
+document.addEventListener('touchmove', (e) => { if(freeDrag && freeDrag.armed && e.cancelable) e.preventDefault(); }, { passive:false });
+// Pas de menu « clic droit / appui long » du navigateur sur une silhouette libre.
+document.addEventListener('contextmenu', (e) => { if(e.target.closest && e.target.closest('.pos.free')) e.preventDefault(); });
 document.addEventListener('pointermove', (e) => {
   if(!freeDrag) return;
   const dx = e.clientX - freeDrag.sx, dy = e.clientY - freeDrag.sy;
+  // Doigt qui bouge avant la fin de l'appui long : c'est un défilement, on abandonne la saisie.
+  if(!freeDrag.armed){ if(Math.hypot(dx, dy) > 10) cancelFreePress(); return; }
   if(!freeDrag.moved && Math.hypot(dx, dy) < 6) return;
   if(!freeDrag.moved){ freeDrag.moved = true; hideSeatPopup(); }
   const formation = document.getElementById('formation');
@@ -2787,6 +2818,8 @@ document.addEventListener('pointermove', (e) => {
 async function endFreeDrag(){
   if(!freeDrag) return;
   const d = freeDrag; freeDrag = null;
+  if(d.timer) clearTimeout(d.timer);
+  d.el.classList.remove('free-armed');
   if(!d.moved) return;
   freeDragMoved = true; setTimeout(() => { freeDragMoved = false; }, 350);
   const kk = freeMetrics().k;
