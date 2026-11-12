@@ -1074,7 +1074,7 @@ async function loadPhotoMap(){
     const raw = await res.json();
     const map = {};
     Object.keys(raw || {}).forEach(name => {
-      map[normalizeName(name)] = raw[name];
+      map[photoKey(name)] = raw[name];
     });
     photoMap = map;
   } catch(err){
@@ -1083,9 +1083,25 @@ async function loadPhotoMap(){
   }
 }
 
+// Clé de recherche des photos : plus tolérante que normalizeName (ignore aussi les tirets,
+// apostrophes et espaces), pour retrouver la photo même si le nom du Roster s'écrit
+// "Jean-Louis" alors que le fichier photo s'appelle "Jean Louis" (ou l'inverse).
+function photoKey(s){
+  return normalizeName(s).replace(/[^a-z0-9]/g, '');
+}
+
 function photoUrlFor(name){
   if(!name) return '';
-  return photoMap[normalizeName(name)] || '';
+  return photoMap[photoKey(name)] || '';
+}
+
+// Diagnostic (à taper dans la console du navigateur, touche F12) : diagPhotos()
+// liste les places occupées dont le nom n'a aucune photo dans photos.json.
+function diagPhotos(){
+  const sans = Object.values(grid).filter(d => d && d.name && !d.blocked && !d.removed && !photoUrlFor(d.name)).map(d => d.name);
+  console.log(Object.keys(photoMap).length + ' photos dans photos.json ; ' + sans.length + ' place(s) occupée(s) sans photo :');
+  console.log(sans.join('\n'));
+  return sans;
 }
 
 // ------------------------------------------------------------
