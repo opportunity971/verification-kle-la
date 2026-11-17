@@ -237,6 +237,87 @@
   }
 
   .message-remise.succes { color: #1b6e3c; font-weight: 600; }
+
+  /* ===== Écran d'accueil : chargement + signature guidée ===== */
+  .chargement {
+    font-size: 14px;
+    color: #777;
+    margin: 28px 0;
+  }
+
+  .chargement.masque { display: none; }
+
+  .cadre-signature { position: relative; }
+
+  /* Indication animée « Signez ici » : un trait de signature qui se dessine en boucle,
+     et qui disparaît dès que la personne commence à signer */
+  .indice-signature {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .indice-signature.cache { opacity: 0; }
+
+  .indice-signature svg { width: 70%; max-width: 200px; height: auto; }
+
+  .indice-signature path {
+    fill: none;
+    stroke: #9a9890;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 400;
+    animation: tracer 2.8s ease-in-out infinite;
+  }
+
+  .indice-signature span {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #8a8880;
+    letter-spacing: 0.02em;
+  }
+
+  .zone-signature.invite { animation: pulsation 1.8s ease-in-out infinite; }
+
+  @keyframes tracer {
+    0%   { stroke-dashoffset: 400; opacity: 1; }
+    60%  { stroke-dashoffset: 0;   opacity: 1; }
+    85%  { stroke-dashoffset: 0;   opacity: 1; }
+    100% { stroke-dashoffset: 0;   opacity: 0; }
+  }
+
+  @keyframes pulsation {
+    0%, 100% { border-color: var(--ligne); }
+    50%      { border-color: var(--encre); }
+  }
+
+  /* Une fois la réception confirmée : on ne garde que le message de remerciement */
+  .panneau-remise.fait .cadre-signature,
+  .panneau-remise.fait .actions-remise,
+  .panneau-remise.fait .sous-texte { display: none; }
+
+  .lien-admin {
+    font: inherit;
+    font-size: 12px;
+    color: #999;
+    background: none;
+    border: none;
+    text-decoration: underline;
+    padding: 8px;
+    margin-top: 10px;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .indice-signature path { animation: none; stroke-dashoffset: 0; }
+    .zone-signature.invite { animation: none; }
+  }
 </style>
 
 </head>
@@ -245,7 +326,9 @@
 <div class="carte">
   <img src="logo.png" alt="Logo" class="logo">
 
-  <div class="formulaire" id="formulaire">
+  <div class="chargement" id="chargement">Chargement…</div>
+
+  <div class="formulaire masque" id="formulaire">
     <h1>Entrez le code adhérent</h1>
     <div class="champ-code" id="champCode">
       <input type="tel" inputmode="numeric" maxlength="1" autocomplete="off">
@@ -261,14 +344,20 @@
 
   <div class="panneau-remise" id="panneauRemise">
     <h1>Confirmer la réception de mon badge</h1>
-    <p class="sous-texte">Signez dans le cadre ci-dessous pour confirmer que vous avez bien reçu votre badge. Un récépissé vous sera envoyé par mail.</p>
-    <canvas class="zone-signature" id="zoneSignature"></canvas>
+    <p class="sous-texte">Vous venez de recevoir votre badge ? Signez dans le cadre ci-dessous pour confirmer. Un récépissé vous sera envoyé par mail.</p>
+    <div class="cadre-signature">
+      <canvas class="zone-signature invite" id="zoneSignature"></canvas>
+      <div class="indice-signature" id="indiceSignature" aria-hidden="true">
+        <svg viewBox="0 0 200 60"><path pathLength="400" d="M8 42 C 28 4, 46 4, 56 34 S 82 62, 98 26 S 128 4, 142 38 S 172 52, 192 18"/></svg>
+        <span>Signez ici</span>
+      </div>
+    </div>
     <div class="actions-remise">
       <button type="button" class="bouton-secondaire" id="btnEffacerSignature">Effacer</button>
       <button type="button" class="bouton-principal" id="btnValiderRemise">Valider</button>
     </div>
     <div class="message-remise" id="messageRemise"></div>
-    <button type="button" class="lien-remise" id="btnFermerRemise">Retour</button>
+    <button type="button" class="lien-admin" id="btnFermerRemise">Accès administrateur</button>
   </div>
 
   <div class="resultat" id="resultat">
@@ -429,17 +518,60 @@
     return Array.from(new Uint8Array(empreinte)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Le bouton n'apparaît que si le badge n'a pas encore été confirmé.
+  const chargement = document.getElementById('chargement');
+  const indiceSignature = document.getElementById('indiceSignature');
+  let ecranChoisi = false;
+
+  // Écran du code à 4 chiffres (administrateurs, ou badge déjà remis).
+  function afficherCodeParDefaut() {
+    if (ecranChoisi) return;
+    ecranChoisi = true;
+    chargement.classList.add('masque');
+    formulaire.classList.remove('masque');
+    champs[0].focus();
+  }
+
+  // Écran de signature : affiché en premier tant que la remise du badge n'est pas confirmée.
+  function ouvrirRemise() {
+    ecranChoisi = true;
+    chargement.classList.add('masque');
+    formulaire.classList.add('masque');
+    panneauRemise.classList.remove('fait');
+    panneauRemise.classList.add('visible');
+    afficherMessageRemise('');
+    btnValiderRemise.disabled = false;
+    preparerSignature();
+  }
+
+  // Au chargement de la page :
+  //  - badge pas encore confirmé  -> on ouvre directement l'écran de signature ;
+  //  - badge déjà confirmé, ou statut impossible à obtenir (pas de clé dans l'adresse,
+  //    réseau coupé...) -> on affiche le code à 4 chiffres, comme avant.
   async function verifierStatutRemise() {
-    if (!URL_REMISE || !identifiant || !clePersonnelle || !window.crypto || !crypto.subtle) return;
+    if (!URL_REMISE || !identifiant || !clePersonnelle || !window.crypto || !crypto.subtle) {
+      afficherCodeParDefaut();
+      return;
+    }
+    // Filet de sécurité : si Google met trop de temps à répondre, on affiche le code.
+    const minuteur = setTimeout(afficherCodeParDefaut, 7000);
     try {
       const preuve = await preuveBadge();
       const reponse = await fetch(URL_REMISE + '?action=statut&id=' + encodeURIComponent(identifiant)
         + '&preuve=' + preuve);
       const donnees = await reponse.json();
-      if (donnees && donnees.ok && donnees.remis === false) blocRemise.classList.add('visible');
+      clearTimeout(minuteur);
+      if (donnees && donnees.ok && donnees.remis === false) {
+        blocRemise.classList.add('visible');
+        // Si la réponse arrive après l'affichage du code, on ne change d'écran que si
+        // personne n'a encore commencé à saisir un code.
+        const codeCommence = Array.from(champs).some(c => c.value);
+        if (!codeCommence && !resultat.classList.contains('visible')) ouvrirRemise();
+      } else {
+        afficherCodeParDefaut();
+      }
     } catch (erreur) {
-      // En cas de souci réseau, le site continue de fonctionner comme avant.
+      clearTimeout(minuteur);
+      afficherCodeParDefaut();   // souci réseau : le site fonctionne comme avant
     }
   }
 
@@ -454,6 +586,9 @@
     ctxSignature.lineJoin = 'round';
     ctxSignature.strokeStyle = '#111111';
     aSigne = false;
+    // On réaffiche l'indication animée « Signez ici »
+    indiceSignature.classList.remove('cache');
+    zoneSignature.classList.add('invite');
   }
 
   function positionDansSignature(evenement) {
@@ -466,6 +601,8 @@
     zoneSignature.setPointerCapture(e.pointerId);
     enTrain = true;
     aSigne = true;
+    indiceSignature.classList.add('cache');       // la personne a commencé : on masque l'indication
+    zoneSignature.classList.remove('invite');
     const p = positionDansSignature(e);
     ctxSignature.beginPath();
     ctxSignature.moveTo(p.x, p.y);
@@ -490,13 +627,7 @@
     messageRemise.classList.toggle('succes', !!succes);
   }
 
-  document.getElementById('btnOuvrirRemise').addEventListener('click', () => {
-    formulaire.classList.add('masque');
-    panneauRemise.classList.add('visible');
-    afficherMessageRemise('');
-    btnValiderRemise.disabled = false;
-    preparerSignature();
-  });
+  document.getElementById('btnOuvrirRemise').addEventListener('click', ouvrirRemise);
 
   document.getElementById('btnEffacerSignature').addEventListener('click', preparerSignature);
 
@@ -528,6 +659,7 @@
       const donnees = await reponse.json();
       if (donnees && donnees.ok) {
         blocRemise.classList.remove('visible');
+        panneauRemise.classList.add('fait');   // on ne garde que le message de remerciement
         if (donnees.mail === 'oui') {
           afficherMessageRemise('Merci ! Votre récépissé vient de vous être envoyé par mail.', true);
         } else if (donnees.mail === 'en attente') {
@@ -537,6 +669,7 @@
         }
       } else if (donnees && donnees.deja) {
         blocRemise.classList.remove('visible');
+        panneauRemise.classList.add('fait');
         afficherMessageRemise('La réception de ce badge a déjà été confirmée.', true);
       } else {
         afficherMessageRemise("Impossible d'enregistrer la confirmation. Réessayez ou contactez l'association.");
@@ -549,8 +682,6 @@
   });
 
   verifierStatutRemise();
-
-  champs[0].focus();
 </script>
 
 </body>
